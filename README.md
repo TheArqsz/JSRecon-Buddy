@@ -6,6 +6,17 @@
 </p>
 
 
+<p align="center">
+    <a href="#how-to-install-or-update">
+        <img alt="Chromium Extension" src="https://img.shields.io/badge/Chromium%20Supported-blue?style=for-the-badge&logo=googlechrome&logoColor=white">
+    </a>
+    <a href="#how-to-install-or-update">
+        <img alt="Firefox Extension" src="https://img.shields.io/badge/Firefox%20Supported-E66000?style=for-the-badge&logo=firefox&logoColor=331E54&link=%23how-to-install-or-update">
+    </a>
+    <img alt="GitHub manifest version" src="https://img.shields.io/github/manifest-json/v/TheArqsz/JSRecon-Buddy?style=for-the-badge&label=Ver.">
+</p>
+
+
 A simple browser extension to quickly find interesting security-related information on a webpage. It injects an overlay to display its findings without interrupting your workflow.
 
 ## Features
@@ -107,7 +118,31 @@ JS Recon Buddy was built to solve these problems. It takes the great idea of a r
 	<img src="./assets/deconstructed-sources.png" alt="Source maps" width="90%"/>
 </p>
 
+## Browser Compatibility
+
+> **TL;DR**: This extension is built for Chromium-based browsers (Chrome, Brave, Edge) and also works on Firefox. However Chromium will always be the top priority, unless it says otherwise here.
+
+This extension was primarily developed and tested on **Chromium-based** browsers, including Google Chrome, Brave, and Microsoft Edge. The core functionality is optimized for this environment, ensuring the most stable and reliable experience.
+
+While cross-browser support for **Mozilla Firefox** has been implemented, please be aware that the primary development focus remains on the Chromium family. Consequently, I reserve the right to deprecate or remove Firefox support in the future if its maintenance introduces significant bugs or compromises the extension's stability on its main platforms.
+
+### A Note for Chromium-based Users (Known Issue)
+
+When you load the extension as an unpacked extension in a Chromium-based browser, you may see a non-critical error in the chrome://extensions page that says:
+
+```
+'background.scripts' requires manifest version 2 or lower.
+```
+
+**You can safely ignore this message.**
+
+This is an expected and harmless side effect of maintaining a single codebase for both Chromium and Firefox. To ensure Firefox compatibility (due to its current limitations with Manifest V3), a background script is declared in a way that modern Chromium browsers flag as outdated. To the best of [my knowledge](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/manifest.json/background#browser_support), this does not affect the extension's performance or functionality in any way.
+
+This approach was chosen to avoid maintaining two separate versions of the extension. For the technically curious, you can read more about the underlying issue [in the mozilla/web-ext repository thread](https://github.com/mozilla/web-ext/issues/2532).
+
 ## How to Install or Update?
+
+### Chromium-based browser
 
 Since this extension is not on the Chrome Web Store, it must be loaded as an unpacked extension in developer mode.
 
@@ -120,6 +155,10 @@ Since this extension is not on the Chrome Web Store, it must be loaded as an unp
 6. Select the directory where you cloned the repository or unzipped the archive.
 
 The extension will now be installed or updated.
+
+### Firefox
+
+TBD
 
 ## How to use?
 

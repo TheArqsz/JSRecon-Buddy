@@ -1,3 +1,15 @@
+## [1.7.0](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.6.2...v1.7.0) (2025-09-23)
+
+
+### Features
+
+* Added basic support for Firefox browser (manifest.json + background.js) ([a3d347c](https://github.com/TheArqsz/JSRecon-Buddy/commit/a3d347c2e48b0d138ce8473ce188252da99cd05c))
+
+
+### Bug Fixes
+
+* Follow up on the storage fix from the last commit (popup.js) ([e0d0451](https://github.com/TheArqsz/JSRecon-Buddy/commit/e0d04511fe75abf604cfd918955cd0acb7d74c51))
+
 ## [1.6.2](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.6.1...v1.6.2) (2025-09-22)
 
 

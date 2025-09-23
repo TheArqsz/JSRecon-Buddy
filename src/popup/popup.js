@@ -27,7 +27,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const isScannable = activeTab && activeTab.url && activeTab.url.startsWith('http') &&
     !activeTab.url.startsWith('https://chrome.google.com/webstore') &&
-    !activeTab.url.startsWith('https://chromewebstore.google.com/');
+    !activeTab.url.startsWith('https://chromewebstore.google.com/') &&
+    !activeTab.url.startsWith('https://addons.mozilla.org');
 
   if (!activeTab || !activeTab.id) {
     console.error("[JS Recon Buddy] Could not get active tab.");
@@ -108,7 +109,7 @@ function renderContent(storedData, findingsList, isScannable = true) {
   const rescanButton = document.getElementById('rescan-passive-btn');
 
   if (!isScannable) {
-    findingsList.innerHTML = '<div class="no-findings"><span>This page type (e.g., chrome://, edge://) cannot be scanned for secrets.</span></div>';
+    findingsList.innerHTML = '<div class="no-findings"><span>This page type (e.g., chrome://, edge:// or specific extension stores) cannot be scanned for secrets.</span></div>';
     return;
   }
 

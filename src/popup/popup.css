@@ -2,14 +2,14 @@
     --color-bg-primary: #282c34;
     --color-bg-secondary: #21252b;
     --color-text-primary: #abb2bf;
-    --color-text-danger: #c7372f;
-    --color-text-secondary: #21252b;
+    --color-text-danger: #ff3b30;
+    --color-text-on-accent: #21252b;
     --color-text-success: #98c379;
     --color-border: #444;
     --color-accent: #00bcd4;
     --color-accent-hover: #0097a7;
     --color-white: #ffffff;
-    --color-notification: #ff3b30;
+    --color-notification: var(--color-text-danger);
 
     --spacing-sm: 5px;
     --spacing-md: 10px;
@@ -20,6 +20,8 @@
     --font-size-sm: 12px;
     --font-size-md: 14px;
     --font-size-lg: 16px;
+
+    --opacity-disabled: 0.6;
 
     --transition-fast: all 0.2s ease-in-out;
 }
@@ -32,7 +34,6 @@ body {
     color: var(--color-text-primary);
     padding: var(--spacing-md);
     margin: 0;
-    padding: 8px;
 }
 
 .container {
@@ -87,13 +88,36 @@ h2 {
 }
 
 h2 #findings-count {
-    opacity: 0.7;
+    opacity: var(--opacity-disabled);
 }
 
 #findings-list {
     max-height: 240px;
     overflow-y: auto;
+
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-accent) var(--color-bg-secondary);
 }
+
+#findings-list::-webkit-scrollbar {
+    width: 10px;
+}
+
+#findings-list::-webkit-scrollbar-track {
+    background: var(--color-bg-secondary);
+    border-radius: 4px;
+}
+
+#findings-list::-webkit-scrollbar-thumb {
+    background-color: var(--color-accent);
+    border-radius: 4px;
+    border: 2px solid var(--color-bg-secondary);
+}
+
+#findings-list::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-accent-hover);
+}
+
 
 .no-findings {
     text-align: center;
@@ -158,7 +182,7 @@ label {
 
 .btn:disabled {
     background-color: var(--color-border);
-    opacity: 0.6;
+    opacity: var(--opacity-disabled);
     cursor: not-allowed;
 }
 
@@ -173,7 +197,7 @@ label {
 
 .btn-primary {
     background-color: var(--color-accent);
-    color: var(--color-text-secondary);
+    color: var(--color-text-on-accent);
 }
 
 .btn-primary:hover {
@@ -207,8 +231,9 @@ label {
 #version-display {
     font-size: var(--font-size-vsm);
     color: var(--color-text-primary);
-    opacity: 0.5;
+    opacity: var(--opacity-disabled);
     justify-self: start;
+    cursor: default;
 }
 
 .footer-link {
@@ -216,7 +241,7 @@ label {
     color: var(--color-text-primary);
     justify-self: end;
     text-decoration: none;
-    opacity: 0.5;
+    opacity: var(--opacity-disabled);
     transition: var(--transition-fast);
     white-space: nowrap;
 }
@@ -236,7 +261,7 @@ label {
     height: 20px;
     fill: var(--color-text-primary);
     transition: var(--transition-fast);
-    opacity: 0.7;
+    opacity: var(--opacity-disabled);
 }
 
 .github-link:hover svg {
@@ -252,7 +277,7 @@ label {
     font-size: 20px;
     font-weight: bold;
     color: var(--color-notification);
-    opacity: 0.7;
+    opacity: var(--opacity-disabled);
 
     text-shadow: 0 0 3px var(--color-background);
 
@@ -272,17 +297,14 @@ label {
 
 @keyframes pulse-text {
     0% {
-        /* opacity: 0.7; */
         transform: scale(0.9);
     }
 
     50% {
-        /* opacity: 1; */
         transform: scale(1.1);
     }
 
     100% {
-        /* opacity: 0.7; */
         transform: scale(0.9);
     }
 }

@@ -1,3 +1,12 @@
+## [1.7.1](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.7.0...v1.7.1) (2025-09-23)
+
+
+### Bug Fixes
+
+* Added fix for the latest version not being shown in the title of the notification ([14e409b](https://github.com/TheArqsz/JSRecon-Buddy/commit/14e409b1d1b41dedee70f43b6d191ad1b5b85eb6))
+* Added handler for Mozilla's Addon store throwing permission errors ([b0ece38](https://github.com/TheArqsz/JSRecon-Buddy/commit/b0ece38e01a46c9001c25807702d963808ccec15))
+* Added handler for Mozilla's Addon store throwing permission errors ([60269c4](https://github.com/TheArqsz/JSRecon-Buddy/commit/60269c43d2dd7641d5628399c521801ee4b163bb))
+
 ## [1.7.0](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.6.2...v1.7.0) (2025-09-23)
 
 

@@ -14,7 +14,9 @@
     --spacing-sm: 5px;
     --spacing-md: 10px;
     --spacing-lg: 15px;
+    --spacing-vlg: 25px;
 
+    --font-size-vsm: 11px;
     --font-size-sm: 12px;
     --font-size-md: 14px;
     --font-size-lg: 16px;
@@ -194,9 +196,34 @@ label {
 }
 
 .footer-container {
-    display: flex;
-    justify-content: center;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
     margin-top: var(--spacing-md);
+    gap: var(--spacing-vlg);
+    width: 100%;
+}
+
+#version-display {
+    font-size: var(--font-size-vsm);
+    color: var(--color-text-primary);
+    opacity: 0.5;
+    justify-self: start;
+}
+
+.footer-link {
+    font-size: var(--font-size-vsm);
+    color: var(--color-text-primary);
+    justify-self: end;
+    text-decoration: none;
+    opacity: 0.5;
+    transition: var(--transition-fast);
+    white-space: nowrap;
+}
+
+.footer-link:hover {
+    opacity: 1;
+    text-decoration: underline;
 }
 
 .github-link {

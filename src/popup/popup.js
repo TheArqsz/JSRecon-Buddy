@@ -44,6 +44,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   loadAndRenderSecrets(activeTab, isScannable);
 
+  const manifest = chrome.runtime.getManifest();
+  const versionDisplay = document.getElementById('version-display');
+  if (versionDisplay) {
+    versionDisplay.textContent = `v${manifest.version}`;
+  }
+
   scanButton.addEventListener('click', async () => {
     await chrome.runtime.sendMessage({
       type: 'SCAN_PAGE',

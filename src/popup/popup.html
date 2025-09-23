@@ -2,48 +2,55 @@
 <html>
 
 <head>
-	<meta charset="utf-8" />
-	<link rel="stylesheet" href="popup.css" />
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="popup.css" />
 </head>
 
 <body>
-	<div class="container">
-		<div class="header">
-			<h1>JS Recon Buddy</h1>
-		</div>
+    <div class="container">
+        <div class="header">
+            <h1>JS Recon Buddy</h1>
+        </div>
 
-		<button id="scan-button" class="btn btn-primary">Analyze Full Page</button>
-		<div class="separator"></div>
+        <button id="scan-button" class="btn btn-primary">Analyze Full Page</button>
+        <div class="separator"></div>
 
-		<div class="header">
-			<h2>Passive Secret Findings <span id="findings-count"></span></h2>
-			<button id="rescan-passive-btn" class="btn-icon" title="Force Rescan">
-				<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px"
-					fill="#e3e3e3">
-					<path
-						d="M480-160q-134 0-227-93t-93-227q0-134 93-227t227-93q69 0 132 28.5T720-690v-110h80v280H520v-80h168q-32-56-87.5-88T480-720q-100 0-170 70t-70 170q0 100 70 170t170 70q77 0 139-44t87-116h84q-28 106-114 173t-196 67Z" />
-				</svg>
-			</button>
-		</div>
-		<div id="findings-list">
-		</div>
+        <div class="header">
+            <h2>Passive Secret Findings <span id="findings-count"></span></h2>
+            <button id="rescan-passive-btn" class="btn-icon" title="Force Rescan">
+                <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px"
+                    fill="#e3e3e3">
+                    <path
+                        d="M480-160q-134 0-227-93t-93-227q0-134 93-227t227-93q69 0 132 28.5T720-690v-110h80v280H520v-80h168q-32-56-87.5-88T480-720q-100 0-170 70t-70 170q0 100 70 170t170 70q77 0 139-44t87-116h84q-28 106-114 173t-196 67Z" />
+                </svg>
+            </button>
+        </div>
+        <div id="findings-list">
+        </div>
 
-		<div class="footer-container">
-			<a href="https://github.com/TheArqsz/JSRecon-Buddy" target="_blank" class="github-link"
-				title="Visit my GitHub">
-				<span class="update-indicator">*</span>
-				<span class="tooltip">New version available!</span>
-				<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="github-logo">
-					<path
-						d="M8 0a8 8 0 0 0-2.53 15.59c.4.07.55-.17.55-.38l-.01-1.34c-2.23.48-2.7-1.07-2.7-1.07-.36-.92-.89-1.16-.89-1.16-.73-.5.06-.49.06-.49.8.06 1.22.82 1.22.82.71 1.21 1.87.86 2.33.66.07-.51.28-.86.51-1.06-1.78-.2-3.65-.89-3.65-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48l-.01 2.2c0 .21.15.46.55.38A8 8 0 0 0 8 0Z">
-					</path>
-				</svg>
-			</a>
-		</div>
-	</div>
+        <div class="footer-container">
 
-	<script src="popup.js"></script>
-	<script src="version.js"></script>
+            <span id="version-display"></span>
+
+            <a href="https://github.com/TheArqsz/JSRecon-Buddy" target="_blank" class="github-link"
+                title="Visit my GitHub">
+                <span class="update-indicator">*</span>
+                <span class="tooltip">New version available!</span>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="github-logo">
+                    <path
+                        d="M8 0a8 8 0 0 0-2.53 15.59c.4.07.55-.17.55-.38l-.01-1.34c-2.23.48-2.7-1.07-2.7-1.07-.36-.92-.89-1.16-.89-1.16-.73-.5.06-.49.06-.49.8.06 1.22.82 1.22.82.71 1.21 1.87.86 2.33.66.07-.51.28-.86.51-1.06-1.78-.2-3.65-.89-3.65-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48l-.01 2.2c0 .21.15.46.55.38A8 8 0 0 0 8 0Z">
+                    </path>
+                </svg>
+            </a>
+            <a href="https://github.com/TheArqsz/JSRecon-Buddy/issues/new?template=bug_report.md" target="_blank"
+                class="footer-link">
+                Report an Issue
+            </a>
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+    <script src="version.js"></script>
 </body>
 
 </html>

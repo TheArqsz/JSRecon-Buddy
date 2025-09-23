@@ -84,6 +84,7 @@ function updateUI(latestVersion) {
 
 	if (latestVersion > currentVersion) {
 		githubLink.classList.add('update-available');
+		githubLink.setAttribute('title', `Version ${latestVersion} is available`);
 		tooltip.textContent = `New version available!`;
 	}
 }

@@ -21,7 +21,10 @@
   },
   "background": {
     "service_worker": "src/background.js",
-    "type": "module"
+    "type": "module",
+    "scripts": [
+      "src/background.js"
+    ]
   },
   "icons": {
     "128": "src/icons/icon-scanning-128.png"
@@ -44,5 +47,11 @@
         "<all_urls>"
       ]
     }
-  ]
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "@jsrecon-buddy",
+      "strict_min_version": "143.0"
+    }
+  }
 }

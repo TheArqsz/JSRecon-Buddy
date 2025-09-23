@@ -63,6 +63,21 @@ const isScannable = (url) => {
 };
 
 /**
+ * Checks which browser the extension is running in.
+ * @returns {Promise<'firefox'|'chrome'>}
+ */
+async function checkBrowser() {
+  if (typeof browser !== 'undefined' && typeof browser.runtime?.getBrowserInfo === 'function') {
+    const info = await browser.runtime.getBrowserInfo();
+    if (info.name === "Firefox") {
+      return 'firefox';
+    }
+  }
+
+  return 'chrome';
+}
+
+/**
  * A throttled fetch function that uses a queue to limit concurrent network requests.
  * @param {string} url The URL to fetch.
  * @returns {Promise<string|null>} A promise that resolves with the content text or null on error.
@@ -162,7 +177,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   for (const [key, value] of scannedPages) {
     if (key.startsWith(`${tabId}|`)) {
       scannedPages.delete(key);
-      chrome.storage.session.remove(key).catch(e => console.warn(e));
+      chrome.storage.local.remove(key).catch(e => console.warn(e));
     }
   }
   scansInProgress.delete(tabId);
@@ -186,6 +201,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         target: { tabId: targetTabId },
         files: ["src/overlay/overlay.js"],
       });
+      sendResponse({ status: "ok" });
     }
 
     if (request.type === "FETCH_SCRIPTS") {
@@ -298,7 +314,7 @@ async function isValidTab(tabId) {
  * Manages the initial UI and state of a tab as it begins to load.
  *
  * This function is the first to act when a tab navigation starts. It checks
- * if complete scan results for the given URL are already stored in session
+ * if complete scan results for the given URL are already stored in local
  * storage.
  *
  * - If cached results are found, it immediately restores the UI (icon, badge)
@@ -307,7 +323,7 @@ async function isValidTab(tabId) {
  * rapid page loads.
  *
  * - If no results are found, it sets the UI to a "scanning in progress" state
- * and updates the session storage, so the popup displays the correct status
+ * and updates the local storage, so the popup displays the correct status
  * while waiting for the scan to complete.
  *
  * @param {number} tabId The ID of the tab that has started loading.
@@ -322,7 +338,7 @@ async function setInitialLoadingState(tabId) {
 
     const pageKey = `${tabId}|${tab.url}`;
 
-    const dataWrapper = await chrome.storage.session.get(pageKey);
+    const dataWrapper = await chrome.storage.local.get(pageKey);
     const storedData = dataWrapper[pageKey];
 
     if (storedData && storedData.status === 'complete') {
@@ -334,17 +350,23 @@ async function setInitialLoadingState(tabId) {
 
         storedData.contentMap = {};
         try {
-          await chrome.storage.session.set({ [pageKey]: storedData });
+          await chrome.storage.local.set({ [pageKey]: storedData });
         } catch (error) { }
       }
       return;
     }
 
-    chrome.action.setIcon({ tabId, path: 'icons/icon-scanning-128.png' });
+    const browserName = await checkBrowser();
+    let iconsPath = 'icons'
+    if (browserName === 'firefox') {
+      iconsPath = 'src/icons'
+    }
+
+    chrome.action.setIcon({ tabId, path: `${iconsPath}/icon-scanning-128.png` });
     chrome.action.setBadgeText({ tabId, text: '...' });
     chrome.action.setBadgeBackgroundColor({ tabId, color: '#FDB813' });
     chrome.action.setTitle({ tabId, title: 'Page loading, preparing to scan...' });
-    await chrome.storage.session.set({ [pageKey]: { status: 'scanning' } });
+    await chrome.storage.local.set({ [pageKey]: { status: 'scanning' } });
 
   } catch (error) {
     if (error.message.includes('No tab with id')) return;
@@ -374,7 +396,7 @@ async function triggerPassiveScan(tabId, force = false) {
       return;
     }
 
-    const dataWrapper = await chrome.storage.session.get(pageKey);
+    const dataWrapper = await chrome.storage.local.get(pageKey);
     const storedData = dataWrapper[pageKey];
 
     if (storedData && storedData.status === 'complete' && !force) {
@@ -383,7 +405,7 @@ async function triggerPassiveScan(tabId, force = false) {
 
         storedData.contentMap = {};
         try {
-          await chrome.storage.session.set({ [pageKey]: storedData });
+          await chrome.storage.local.set({ [pageKey]: storedData });
         } catch (error) { }
       }
       await updateActionUI(tab.id, findingsCount);
@@ -535,14 +557,6 @@ async function runPassiveScan(pageData, tabId, pageKey) {
       return { source: s.source, content: s.content, isTooLarge: isTooLarge };
     });
 
-  await getOrCreateOffscreenDocument();
-
-  try {
-    await chrome.runtime.sendMessage({ type: 'ping', target: 'offscreen' });
-  } catch (e) {
-    console.warn(`[JS Recon Buddy] Offscreen document not responsive for tab ${tabId}.`, e);
-  }
-
   const serializableRules = secretRules.map(rule => ({
     ...rule,
     regex: {
@@ -550,63 +564,139 @@ async function runPassiveScan(pageData, tabId, pageKey) {
       flags: rule.regex.flags
     }
   }));
-  const response = await chrome.runtime.sendMessage({
-    type: 'scanContent',
-    target: 'offscreen',
-    allContentSources: sourcesForOffscreen,
-    secretRules: serializableRules
-  });
 
-  if (response && response.status === 'success') {
-    if (removedTabs.has(tabId)) {
-      console.log(`[JS Recon Buddy] Scan for closed tab ${tabId} was canceled. Discarding results.`);
-      removedTabs.delete(tabId);
-      clearStaleLocalCache(`source-viewer-${tabId}`, -1);
-      chrome.storage.session.get(null, (allItems) => {
-        const keysToRemove = Object.keys(allItems).filter(key => key.startsWith(`${tabId}|`));
-        if (keysToRemove.length > 0) {
-          chrome.storage.session.remove(keysToRemove);
-        }
-      });
-      return;
-    }
-    const findings = response.data;
-    const findingsCount = findings.length;
-    scannedPages.set(pageKey, { findingsCount: findingsCount });
+  const browserName = await checkBrowser();
+
+  if (browserName === 'chrome') {
+    await getOrCreateOffscreenDocument();
 
     try {
-      if (findingsCount == 0) {
-        await chrome.storage.session.set({
-          [pageKey]: {
-            status: 'complete',
-            results: findings,
-            contentMap: {},
-          }
-        });
-      } else {
-        await chrome.storage.session.set({
-          [pageKey]: {
-            status: 'complete',
-            results: findings,
-            contentMap: contentMap,
-          }
-        });
-      }
-    } catch (error) {
-      if (error.message.toLowerCase().includes('quota')) {
-        await chrome.storage.session.set({
-          [pageKey]: { status: 'complete', results: findings, contentMap: {} }
-        });
-      }
+      await chrome.runtime.sendMessage({ type: 'ping', target: 'offscreen' });
+    } catch (e) {
+      console.warn(`[JS Recon Buddy] Offscreen document not responsive for tab ${tabId}.`, e);
     }
 
-    await updateActionUI(tabId, findings.length);
-  } else {
-    console.warn(`[JS Recon Buddy] Offscreen scan failed for tab ${tabId}:`, response ? response.message : "No response received");
+    const response = await chrome.runtime.sendMessage({
+      type: 'scanContent',
+      target: 'offscreen',
+      allContentSources: sourcesForOffscreen,
+      serializableRules: serializableRules
+    });
 
-    await updateActionUI(tabId, 0);
-    scannedPages.delete(pageKey);
-    await chrome.storage.session.remove(pageKey);
+    if (response && response.status === 'success') {
+      if (removedTabs.has(tabId)) {
+        console.log(`[JS Recon Buddy] Scan for closed tab ${tabId} was canceled. Discarding results.`);
+        removedTabs.delete(tabId);
+        clearStaleLocalCache(`source-viewer-${tabId}`, -1);
+        chrome.storage.local.get(null, (allItems) => {
+          const keysToRemove = Object.keys(allItems).filter(key => key.startsWith(`${tabId}|`));
+          if (keysToRemove.length > 0) {
+            chrome.storage.local.remove(keysToRemove);
+          }
+        });
+        return;
+      }
+      const findings = response.data;
+      const findingsCount = findings.length;
+      scannedPages.set(pageKey, { findingsCount: findingsCount });
+
+      try {
+        if (findingsCount == 0) {
+          await chrome.storage.local.set({
+            [pageKey]: {
+              status: 'complete',
+              results: findings,
+              contentMap: {},
+            }
+          });
+        } else {
+          await chrome.storage.local.set({
+            [pageKey]: {
+              status: 'complete',
+              results: findings,
+              contentMap: contentMap,
+            }
+          });
+        }
+      } catch (error) {
+        if (error.message.toLowerCase().includes('quota')) {
+          await chrome.storage.local.set({
+            [pageKey]: { status: 'complete', results: findings, contentMap: {} }
+          });
+        }
+      }
+
+      await updateActionUI(tabId, findings.length);
+
+    } else {
+      console.warn(`[JS Recon Buddy] Offscreen scan failed for tab ${tabId}:`, response ? response.message : "No response received");
+
+      await updateActionUI(tabId, 0);
+      scannedPages.delete(pageKey);
+      await chrome.storage.local.remove(pageKey);
+    }
+
+  } else {
+    const scanWorker = new Worker(
+      browser.runtime.getURL("src/offscreen/firefox-scan-worker.js"),
+      { type: 'module' }
+    );
+
+    scanWorker.onmessage = async (event) => {
+      const response = event.data;
+      if (response && response.status === 'success') {
+        if (removedTabs.has(tabId)) {
+          console.log(`[JS Recon Buddy] Scan for closed tab ${tabId} was canceled. Discarding results.`);
+          removedTabs.delete(tabId);
+          clearStaleLocalCache(`source-viewer-${tabId}`, -1);
+          browser.storage.local.get(null, (allItems) => {
+            const keysToRemove = Object.keys(allItems).filter(key => key.startsWith(`${tabId}|`));
+            if (keysToRemove.length > 0) {
+              browser.storage.local.remove(keysToRemove);
+            }
+          });
+          return;
+        }
+        const findings = response.data;
+        const findingsCount = findings.length;
+        scannedPages.set(pageKey, { findingsCount: findingsCount });
+
+        try {
+          if (findingsCount == 0) {
+            await chrome.storage.local.set({
+              [pageKey]: { status: 'complete', results: findings, contentMap: {} }
+            });
+          } else {
+            await chrome.storage.local.set({
+              [pageKey]: { status: 'complete', results: findings, contentMap: contentMap }
+            });
+          }
+        } catch (error) {
+          if (error.message.toLowerCase().includes('quota')) {
+            await chrome.storage.local.set({
+              [pageKey]: { status: 'complete', results: findings, contentMap: {} }
+            });
+          }
+        }
+        await updateActionUI(tabId, findings.length);
+      } else {
+        console.warn(`[JS Recon Buddy] Worker scan failed for tab ${tabId}:`, response ? response.message : "No response received");
+        await updateActionUI(tabId, 0);
+        scannedPages.delete(pageKey);
+        await browser.storage.local.remove(pageKey);
+      }
+      scanWorker.terminate();
+    };
+
+    scanWorker.onerror = async (error) => {
+      console.warn(`[JS Recon Buddy] Worker scan failed for tab ${tabId}:`, error);
+      await updateActionUI(tabId, 0);
+      scannedPages.delete(pageKey);
+      await browser.storage.local.remove(pageKey);
+      scanWorker.terminate();
+    };
+
+    scanWorker.postMessage({ allContentSources: sourcesForOffscreen, serializableRules: serializableRules });
   }
 }
 
@@ -620,9 +710,14 @@ async function setIconAndState(tabId, state) {
   if (!(await isValidTab(tabId))) {
     return;
   }
+  const browserName = await checkBrowser();
+  let iconsPath = 'icons'
+  if (browserName === 'firefox') {
+    iconsPath = 'src/icons'
+  }
   try {
     if (state === 'scanning') {
-      chrome.action.setIcon({ tabId, path: 'icons/icon-scanning-128.png' });
+      chrome.action.setIcon({ tabId, path: `${iconsPath}/icon-scanning-128.png` });
       chrome.action.setTitle({ tabId, title: 'Passive scanning in progress...' });
       chrome.action.setBadgeText({ tabId, text: '...' });
       chrome.action.setBadgeBackgroundColor({ tabId, color: '#FDB813' });
@@ -630,10 +725,10 @@ async function setIconAndState(tabId, state) {
       const tab = await chrome.tabs.get(tabId);
       if (tab && tab.url) {
         const pageKey = `${tabId}|${tab.url}`;
-        await chrome.storage.session.set({ [pageKey]: { status: 'scanning' } });
+        await chrome.storage.local.set({ [pageKey]: { status: 'scanning' } });
       }
     } else {
-      chrome.action.setIcon({ tabId, path: 'icons/icon-notfound-128.png' });
+      chrome.action.setIcon({ tabId, path: `${iconsPath}/icon-notfound-128.png` });
       chrome.action.setTitle({ tabId, title: '' });
       chrome.action.setBadgeText({ tabId, text: '' });
     }
@@ -657,7 +752,7 @@ async function updateTabTitle(tabId, findingsCount) {
   try {
     await chrome.scripting.executeScript({
       target: { tabId: tabId },
-      function: (count) => {
+      func: (count) => {
         const oldPrefixRegex = /^\[JSRB \(\d+\)\] /;
         const originalTitle = document.title.replace(oldPrefixRegex, '');
 
@@ -685,15 +780,22 @@ async function updateActionUI(tabId, findingsCount) {
     return;
   }
 
+  const browserName = await checkBrowser();
+  let iconsPath = 'icons'
+  if (browserName === 'firefox') {
+    iconsPath = 'src/icons'
+  }
+
   try {
     if (findingsCount > 0) {
-      chrome.action.setIcon({ tabId, path: 'icons/icon-found-128.png' });
+      chrome.action.setIcon({ tabId, path: `${iconsPath}/icon-found-128.png` });
       chrome.action.setBadgeText({ tabId, text: findingsCount.toString() });
       chrome.action.setTitle({ tabId, title: `Found ${findingsCount} potential secrets` })
       chrome.action.setBadgeBackgroundColor({ tabId, color: '#D92A2A' });
     } else {
-      chrome.action.setIcon({ tabId, path: 'icons/icon-notfound-128.png' });
+      chrome.action.setIcon({ tabId, path: `${iconsPath}/icon-notfound-128.png` });
       chrome.action.setBadgeText({ tabId, text: '' });
+      chrome.action.setTitle({ tabId, title: '' });
     }
     await updateTabTitle(tabId, findingsCount);
   } catch (error) {

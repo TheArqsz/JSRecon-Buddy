@@ -18,8 +18,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   } else if (request.type === 'scanContent') {
     (async () => {
       try {
-        const { allContentSources, secretRules } = request;
-        const deserializedRules = secretRules.map(rule => ({
+        const { allContentSources, serializableRules } = request;
+        const deserializedRules = serializableRules.map(rule => ({
           ...rule,
           regex: new RegExp(rule.regex.source, rule.regex.flags)
         }));

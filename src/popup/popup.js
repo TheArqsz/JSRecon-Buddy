@@ -44,8 +44,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   loadAndRenderSecrets(activeTab, isScannable);
 
-  scanButton.addEventListener('click', () => {
-    chrome.runtime.sendMessage({
+  scanButton.addEventListener('click', async () => {
+    await chrome.runtime.sendMessage({
       type: 'SCAN_PAGE',
       tabId: activeTabId
     });
@@ -66,7 +66,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 /**
- * Asynchronously fetches passive scan data from `chrome.storage.session` and
+ * Asynchronously fetches passive scan data from `chrome.storage.local` and
  * triggers the rendering of the findings list or status messages.
  * @param {chrome.tabs.Tab} tab - The active tab object to load data for.
  * @param {boolean} [isScannable=true] - A flag indicating if the page can be scanned.
@@ -80,10 +80,10 @@ async function loadAndRenderSecrets(tab, isScannable = true) {
 
   findingsList.innerHTML = '<div class="no-findings"><span>Loading findings...</span></div>';
 
-  chrome.storage.session.get(pageKey).then(data => {
+  chrome.storage.local.get(pageKey).then(data => {
     renderContent(data[pageKey], findingsList, isScannable);
   }).catch(error => {
-    console.warn("[JS Recon Buddy] Error fetching session data:", error);
+    console.warn("[JS Recon Buddy] Error fetching local data:", error);
     findingsList.innerHTML = '<div class="no-findings"><span>Error loading findings.</span></div>';
   });
 }
@@ -92,7 +92,7 @@ async function loadAndRenderSecrets(tab, isScannable = true) {
  * Renders the content of the passive secrets list based on the current state.
  * It handles various states including "not scannable", "needs reload", "scanning",
  * "no findings", or the list of discovered secrets.
- * @param {object | undefined} storedData - The data object from session storage, which
+ * @param {object | undefined} storedData - The data object from local storage, which
  * may contain `{status: string, results: Array<object>}`.
  * @param {HTMLElement} findingsList - The DOM element to render the content into.
  * @param {boolean} [isScannable=true] - A flag indicating if the page can be scanned.
@@ -194,7 +194,7 @@ function renderContent(storedData, findingsList, isScannable = true) {
 }
 
 /**
- * @description Listens for changes in session storage. If the data for the
+ * @description Listens for changes in local storage. If the data for the
  * active tab is updated (e.g., a scan finishes), it re-renders the popup
  * content dynamically without needing to reopen it.
  */
@@ -203,7 +203,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   if (!activeTab) return;
   const pageKey = `${activeTabId}|${activeTabUrl}`;
 
-  if (areaName === 'session' && changes[pageKey] && findingsList) {
+  if (areaName === 'local' && changes[pageKey] && findingsList) {
     const updatedData = changes[pageKey].newValue;
     renderContent(updatedData, findingsList);
   }

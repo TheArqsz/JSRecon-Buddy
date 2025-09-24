@@ -30,7 +30,7 @@ jobs:
         id: changelog
         uses: TriPSs/conventional-changelog-action@v5
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ steps.app-token.outputs.token }}
           output-file: "CHANGELOG.md"
           tag-prefix: "v"
           version-file: manifest.json
@@ -66,6 +66,6 @@ jobs:
           draft: false
           tag_name: ${{ steps.changelog.outputs.tag }}
           name: ${{ steps.changelog.outputs.tag }}
-          token: ${{ steps.app-token.outputs.token }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           make_latest: true
           body: ${{ steps.changelog.outputs.clean_changelog }}

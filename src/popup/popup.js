@@ -107,6 +107,7 @@ async function loadAndRenderSecrets(tab, isScannable = true) {
 function renderContent(storedData, findingsList, isScannable = true) {
   findingsList.innerHTML = '';
   const rescanButton = document.getElementById('rescan-passive-btn');
+  const findingsCountSpan = document.getElementById('findings-count');
 
   if (!isScannable) {
     findingsList.innerHTML = '<div class="no-findings"><span>This page type (e.g., chrome://, edge:// or specific extension stores) cannot be scanned for secrets.</span></div>';
@@ -133,6 +134,7 @@ function renderContent(storedData, findingsList, isScannable = true) {
   }
 
   if (storedData.status === 'scanning') {
+    findingsCountSpan.innerText = '';
     findingsList.innerHTML = '<div class="no-findings"><span>Secret scanning in progress...</span></div>';
     return;
   }
@@ -150,7 +152,6 @@ function renderContent(storedData, findingsList, isScannable = true) {
     return;
   }
 
-  const findingsCountSpan = document.getElementById('findings-count');
   findingsCountSpan.innerText = `(${findings.length})`
 
   for (const finding of findings) {

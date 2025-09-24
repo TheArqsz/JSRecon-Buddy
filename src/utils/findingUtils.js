@@ -51,7 +51,7 @@ export function getLineAndColumn(content, index) {
  * const currentPageHTML = getDOMAsText();
  * console.log(currentPageHTML);
  */
-function getDOMAsText() {
+export function getDOMAsText() {
   const doctype = new XMLSerializer().serializeToString(document.doctype);
   const html = document.documentElement.outerHTML;
   return doctype + '\n' + html;

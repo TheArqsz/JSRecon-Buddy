@@ -1,3 +1,10 @@
+## [1.8.1](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.8.0...v1.8.1) (2025-09-24)
+
+
+### Bug Fixes
+
+* Added export to getDOMAsText function ([d385ef1](https://github.com/TheArqsz/JSRecon-Buddy/commit/d385ef142bafad15a457937aa7e01aea7d6e07a0))
+
 ## [1.8.0](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.7.1...v1.8.0) (2025-09-24)
 
 

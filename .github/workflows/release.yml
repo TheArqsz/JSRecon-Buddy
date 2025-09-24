@@ -65,5 +65,7 @@ jobs:
           tag_name: ${{ steps.changelog.outputs.tag }}
           name: ${{ steps.changelog.outputs.tag }}
           token: ${{ steps.app-token.outputs.token }}
+          git-user-name: "[JS Recon Buddy] Changelog Bot"
+          git-user-email: "${{ secrets.RELEASE_APP_ID }}+[JS-Recon-Buddy]-Changelog-Bot@users.noreply.github.com"
           make_latest: true
           body: ${{ steps.changelog.outputs.clean_changelog }}

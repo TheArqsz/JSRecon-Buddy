@@ -1,3 +1,23 @@
+## [1.8.0](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.7.1...v1.8.0) (2025-09-24)
+
+
+### Features
+
+* Added line and column to each finding ([070edcc](https://github.com/TheArqsz/JSRecon-Buddy/commit/070edccaa6097cda0dcb9b34d8eee2105a83c47c))
+
+
+### Bug Fixes
+
+* Fixed how conventional commits actions uses App username ([a259c45](https://github.com/TheArqsz/JSRecon-Buddy/commit/a259c457939d35600ef84d8fd489f50212218857))
+* Fixed how conventional commits actions uses App username - wrong action ([96f4d79](https://github.com/TheArqsz/JSRecon-Buddy/commit/96f4d7932d288b98ab98e058a5cb57ecb55cf5b4))
+* Fixed how conventional commits actions uses App username - wrong variables ([38bf387](https://github.com/TheArqsz/JSRecon-Buddy/commit/38bf387a6af3526c009900022ad797eadc285099))
+
+
+### Reverts
+
+* Changed previous edit on workflow ([4ab8299](https://github.com/TheArqsz/JSRecon-Buddy/commit/4ab8299a76a1e3415b17da234723ea9b562ba848))
+* Changed previous edit on workflow ([24823a6](https://github.com/TheArqsz/JSRecon-Buddy/commit/24823a63d0594cd3e971d310f23b05f8d7441ba4))
+
 ## [1.7.1](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.7.0...v1.7.1) (2025-09-23)
 
 

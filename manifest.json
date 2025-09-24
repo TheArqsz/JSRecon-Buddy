@@ -39,7 +39,7 @@
         "src/overlay/overlay.html",
         "src/overlay/overlay.css",
         "src/utils/rules.js",
-        "src/utils/entropy.js",
+        "src/utils/findingUtils.js",
         "src/utils/sourceMapParser.js",
         "src/utils/patterns.js"
       ],

@@ -1,3 +1,10 @@
+## [1.8.3](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.8.2...v1.8.3) (2025-09-24)
+
+
+### Bug Fixes
+
+* Fixed sourceMap modal not closing when user clicked on the background ([bc1fe1a](https://github.com/TheArqsz/JSRecon-Buddy/commit/bc1fe1acdd23eb179fabd50408543d0c6e0b7360))
+
 ## [1.8.2](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.8.1...v1.8.2) (2025-09-24)
 
 

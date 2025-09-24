@@ -157,12 +157,21 @@ function renderContent(storedData, findingsList, isScannable = true) {
     const card = document.createElement('div');
     card.className = 'finding-card';
     const truncatedSecret = finding.secret.length > 100 ? `${finding.secret.substring(0, 97)}...` : finding.secret;
-    let sourceFormatted = finding.source.startsWith('http')
-      ? `<a target="_blank" href="${finding.source}">${finding.source}</a>`
-      : finding.source;
     let description = finding.description
       ? `<p class="description">About: <span>${finding.description}</span></p>`
       : '';
+
+    let locationHTML = '';
+    if (finding.line && finding.column) {
+      locationHTML = `<span class="finding-location">:${finding.line}:${finding.column}</span>`;
+    }
+
+    if (finding.source.startsWith('http')) {
+      sourceFormatted = `<a target="_blank" href="${finding.source}">${finding.source}</a>${locationHTML}`;
+    } else {
+      sourceFormatted = `${finding.source}${locationHTML}`;
+    }
+
     card.innerHTML = `
       <h2>${finding.id}</h2>
       ${description}

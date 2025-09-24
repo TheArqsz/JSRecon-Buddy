@@ -13,8 +13,8 @@
     const { getPatterns } = await import(
       chrome.runtime.getURL("src/utils/patterns.js")
     );
-    const { shannonEntropy } = await import(
-      chrome.runtime.getURL("src/utils/entropy.js")
+    const { shannonEntropy, getLineAndColumn, getDOMAsText } = await import(
+      chrome.runtime.getURL("src/utils/findingUtils.js")
     );
     const OVERLAY_ID = "bug-bounty-scanner-overlay";
     const CACHE_KEY_PREFIX = "scan_cache_";
@@ -361,7 +361,7 @@
         urls: externalScriptUrls,
       });
 
-      const mainHtml = document.documentElement.outerHTML;
+      const mainHtml = getDOMAsText();
       return [
         ...inlineScripts,
         ...externalScripts.filter(Boolean),
@@ -426,11 +426,14 @@
         if (!results[name].has(finding)) {
           results[name].set(finding, []);
         }
+        const { line, column } = getLineAndColumn(code, match.index);
         const occurrence = {
           source: source,
           ruleId: ruleId,
           index: match.index,
-          secretLength: finding.length
+          secretLength: finding.length,
+          line: line,
+          column: column
         };
         results[name]
           .get(finding)
@@ -1055,18 +1058,18 @@
         occurrences.map((occ) => [occ.source + '@' + occ.index, occ]),
       );
 
-      uniqueOccurrences.forEach(({ source, index, secretLength }) => {
+      uniqueOccurrences.forEach(({ source, index, secretLength, line, column }) => {
         const isLocal =
           source.startsWith("Inline Script") || source === "Main HTML Document";
         const isURL = source.startsWith("http");
         let sourceHTML = `↳ ${escapeHTML(source)}`;
         if (isURL) {
-          sourceHTML = `↳ <a href="${source}" target="_blank">${escapeHTML(source)}</a>`;
+          sourceHTML = `↳ <a href="${source}" target="_blank">${escapeHTML(source)}</a><span class="finding-location">:${line}:${column}</span>`;
         } else if (isLocal) {
           sourceHTML = `↳ <span class="clickable-source"
 						data-source="${escapeHTML(source)}"
 						data-index="${index}"
-						data-length="${secretLength}">${escapeHTML(source)} (click to view)</span>`;
+						data-length="${secretLength}">${escapeHTML(source)} (click to view)</span><span class="finding-location"> [Line: ${line} & Col: ${column}]</span>`;
         }
         occurrencesHTML += `<div>${sourceHTML}</div>`;
         if (!isLocal) {

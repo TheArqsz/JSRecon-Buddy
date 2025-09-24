@@ -133,6 +133,12 @@
     padding-left: 0;
 }
 
+.scanner-overlay__results>details .finding-location {
+    opacity: 0.6;
+    font-style: normal;
+    margin-left: 2px;
+}
+
 
 .scanner-overlay__header {
     display: flex;

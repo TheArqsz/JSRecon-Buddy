@@ -1,4 +1,4 @@
-import { shannonEntropy } from '../utils/entropy.js';
+import { shannonEntropy, getLineAndColumn } from '../utils/findingUtils.js';
 
 /**
  * Listens for and routes incoming messages from the service worker.
@@ -60,12 +60,15 @@ async function performScan(allContentSources, secretRules) {
           continue;
         }
 
+        const { line, column } = getLineAndColumn(content, match.index);
         findings.push({
           id: rule.id,
           description: rule.description,
           secret: secret,
           source: source,
-          isSourceTooLarge: isTooLarge
+          isSourceTooLarge: isTooLarge,
+          line: line,
+          column: column
         });
       }
     }

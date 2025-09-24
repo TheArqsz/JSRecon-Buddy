@@ -124,7 +124,7 @@ JS Recon Buddy was built to solve these problems. It takes the great idea of a r
 
 This extension was primarily developed and tested on **Chromium-based** browsers, including Google Chrome, Brave, and Microsoft Edge. The core functionality is optimized for this environment, ensuring the most stable and reliable experience.
 
-While cross-browser support for **Mozilla Firefox** has been implemented, please be aware that the primary development focus remains on the Chromium family. Consequently, I reserve the right to deprecate or remove Firefox support in the future if its maintenance introduces significant bugs or compromises the extension's stability on its main platforms.
+While cross-browser support for **Mozilla Firefox** [has been implemented](https://github.com/TheArqsz/JSRecon-Buddy/commit/a3d347c2e48b0d138ce8473ce188252da99cd05c), please be aware that the primary development focus remains on the Chromium family. Consequently, I reserve the right to deprecate or remove Firefox support in the future if its maintenance introduces significant bugs or compromises the extension's stability on its main platforms.
 
 ### A Note for Chromium-based Users (Known Issue)
 

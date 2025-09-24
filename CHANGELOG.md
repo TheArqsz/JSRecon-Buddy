@@ -1,3 +1,10 @@
+## [1.8.2](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.8.1...v1.8.2) (2025-09-24)
+
+
+### Bug Fixes
+
+* Fixed findings count not refreshing when passive scan is forced ([53a746a](https://github.com/TheArqsz/JSRecon-Buddy/commit/53a746a93898a9c2a699ab1f2b0dc75165a8de47))
+
 ## [1.8.1](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.8.0...v1.8.1) (2025-09-24)
 
 

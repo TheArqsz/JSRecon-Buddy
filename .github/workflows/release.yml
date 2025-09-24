@@ -25,10 +25,13 @@ jobs:
 
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ steps.get_workflow_token.outputs.token }} 
+          persist-credentials: false
 
       - name: Generate Changelog
         id: changelog
-        uses: TriPSs/conventional-changelog-action@v5
+        uses: TriPSs/conventional-changelog-action@v6
         with:
           github-token: ${{ steps.app-token.outputs.token }}
           output-file: "CHANGELOG.md"
@@ -37,7 +40,7 @@ jobs:
           release-count: 0
           preset: conventionalcommits
           git-user-name: "[JS Recon Buddy] Changelog Bot"
-          git-user-email: "${{ secrets.RELEASE_APP_ID }}+[JS-Recon-Buddy]-Changelog-Bot@users.noreply.github.com"
+          git-user-email: "[JS-Recon-Buddy]-Changelog-Bot@users.noreply.github.com"
 
       - name: Create package directory
         if: ${{ steps.changelog.outputs.skipped == 'false' }}

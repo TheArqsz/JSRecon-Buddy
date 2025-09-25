@@ -218,6 +218,33 @@ If you want to view deconstructed source files, click on the Source Map entry, t
 	<img src="./assets/deconstructed-sources.png" alt="Source maps" width="90%"/>
 </p>
 
+## Options and customization
+
+You can customize the extension's behavior by opening the settings page. Access it by clicking the settings icon in the bottom-right corner of the extension's popup.
+
+<p align="center">
+	<img src="./assets/popup.png" alt="Options page" width="90%"/>
+</p>
+
+<p align="center">
+	<img src="./assets/options-settings-page.png" alt="Options page" width="90%"/>
+</p>
+
+### Available Settings
+
+- Disable tab title notifications - by default, the extension adds a `[JSRB (x)]` prefix to the page title when findings are discovered. Check this box to turn off this feature for a cleaner look.
+
+- Exclude Domains/Paths - this feature allows you to prevent the extension from scanning specific websites. You can add one entry per line:
+
+    - Simple Match - entering `example.com` will prevent scans on any URL containing that string.
+    - Regular Expression - for more complex rules, you can use regular expressions by enclosing the pattern in slashes, like `/google\.com\/maps/`.
+
+When a page is excluded from scanning, the extension icon will remain unchanged, and no analysis will be performed, as shown below for `example.com`.
+
+<p align="center">
+	<img src="./assets/scanning-excluded-example.png" alt="Options page" width="90%"/>
+</p>
+
 ## Automatic version check
 
 The extension automatically checks for new versions. When you open the popup, it compares its own version against the [manifest.json](manifest.json) file in this GitHub repository. To avoid excessive requests, the latest version number is cached for 6 hours. If a newer version is available on GitHub, an asterisk will appear on the GitHub logo in the popup.

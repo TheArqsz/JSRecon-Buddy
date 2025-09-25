@@ -37,8 +37,11 @@ export function saveOptions() {
   }, () => {
     const status = document.getElementById('status-message');
     status.textContent = 'Settings saved!';
+    status.classList.add('visible');
+
     setTimeout(() => {
       status.textContent = '';
+      status.classList.remove('visible');
     }, 1500);
   });
 }

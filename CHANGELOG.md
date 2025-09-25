@@ -1,3 +1,11 @@
+## [1.9.0](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.8.3...v1.9.0) (2025-09-25)
+
+
+### Features
+
+* Added options button in the popup itself ([7138a0f](https://github.com/TheArqsz/JSRecon-Buddy/commit/7138a0ffbac47ffb956bacc555cdc1c09dbe4108))
+* Added options page ([a27d314](https://github.com/TheArqsz/JSRecon-Buddy/commit/a27d3147f1aab2cabb77f0008390344b4d294429))
+
 ## [1.8.3](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.8.2...v1.8.3) (2025-09-24)
 
 

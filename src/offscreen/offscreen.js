@@ -12,26 +12,8 @@ import { shannonEntropy, getLineAndColumn } from '../utils/findingUtils.js';
  * the results or any errors that occur.
  */
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.type === 'ping') {
-    sendResponse({ status: 'ready' });
-    return true;
-  } else if (request.type === 'scanContent') {
-    (async () => {
-      try {
-        const { allContentSources, serializableRules } = request;
-        const deserializedRules = serializableRules.map(rule => ({
-          ...rule,
-          regex: new RegExp(rule.regex.source, rule.regex.flags)
-        }));
-        const findings = await performScan(allContentSources, deserializedRules);
-        sendResponse({ status: 'success', data: findings });
-      } catch (error) {
-        console.warn("[JS Recon Buddy] An error has occured during offscreen scan:", error);
-        sendResponse({ status: 'error', message: error.message });
-      }
-    })();
-    return true;
-  }
+  messageHandler(request, sender, sendResponse);
+  return true;
 });
 
 /**
@@ -48,9 +30,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
  * @returns {Promise<Array<object>>}
  * A promise that resolves with an array of finding objects.
  */
-async function performScan(allContentSources, secretRules) {
+export async function performScan(allContentSources, secretRules) {
   const findings = [];
   for (const { source, content, isTooLarge } of allContentSources) {
+    if (!content || isTooLarge) continue;
+
     for (const rule of secretRules) {
       const matches = content.matchAll(rule.regex);
       for (const match of matches) {
@@ -75,4 +59,33 @@ async function performScan(allContentSources, secretRules) {
     await new Promise(resolve => setTimeout(resolve, 0));
   }
   return findings;
+}
+
+/**
+ * Handles incoming messages from the service worker, routes them, and sends a response.
+ * Dedicated for testing purposes to allow direct invocation.
+ * @param {object} request - The message request object.
+ * @param {chrome.runtime.MessageSender} sender - The sender of the message.
+ * @param {function(any): void} sendResponse - The function to call to send a response.
+ */
+export async function messageHandler(request, sender, sendResponse) {
+  if (request.type === 'ping') {
+    sendResponse({ status: 'ready' });
+    return;
+  }
+
+  if (request.type === 'scanContent') {
+    try {
+      const { allContentSources, serializableRules } = request;
+      const deserializedRules = serializableRules.map(rule => ({
+        ...rule,
+        regex: new RegExp(rule.regex.source, rule.regex.flags)
+      }));
+      const findings = await performScan(allContentSources, deserializedRules);
+      sendResponse({ status: 'success', data: findings });
+    } catch (error) {
+      console.warn("[JS Recon Buddy] An error has occurred during offscreen scan:", error);
+      sendResponse({ status: 'error', message: error.message });
+    }
+  }
 }

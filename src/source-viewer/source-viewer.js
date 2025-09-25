@@ -1,22 +1,41 @@
-document.addEventListener('DOMContentLoaded', async () => {
+/**
+ * Sanitizes a string by replacing special HTML characters with their corresponding entities.
+ * This is a security measure to prevent Cross-Site Scripting (XSS) when rendering content.
+ * @param {string | undefined | null} str The input string to escape.
+ * @returns {string} The sanitized string, safe for insertion into HTML.
+ */
+export const escapeHTML = (str) => {
+  if (!str) return '';
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+};
+
+/**
+ * Determines the appropriate Prism.js language class name from a given source string.
+ * It checks the file extension or specific keywords to return a language identifier.
+ * @param {string} source The source file path or a descriptor like "HTML Document".
+ * @returns {string} The language class name for Prism.js (e.g., 'javascript', 'markup'). Defaults to 'javascript'.
+ */
+export const getLanguageFromSource = (source) => {
+  if (source.endsWith('.js')) return 'javascript';
+  if (source.endsWith('.css')) return 'css';
+  if (source.endsWith('.json')) return 'json';
+  if (source.endsWith('.html') || source === 'HTML Document') return 'markup';
+  return 'javascript';
+};
+
+/**
+ * @description Main logic for the source viewer page. It reads a storage key from the URL hash,
+ * fetches the corresponding content and secret from local storage, renders the content
+ * into the DOM, and then uses Prism.js to syntax highlight the code and scroll to the secret.
+ * @returns {Promise<void>}
+ */
+export async function initializeViewer() {
   const codeEl = document.getElementById('content-container');
-
-  const escapeHTML = (str) => {
-    return str
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
-  };
-
-  const getLanguageFromSource = (source) => {
-    if (source.endsWith('.js')) return 'javascript';
-    if (source.endsWith('.css')) return 'css';
-    if (source.endsWith('.json')) return 'json';
-    if (source.endsWith('.html') || source === 'HTML Document') return 'markup';
-    return 'javascript';
-  };
 
   try {
     const storageKey = window.location.hash.substring(1);
@@ -44,6 +63,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       );
       codeEl.className = `language-${language}`;
       codeEl.textContent = updatedContent;
+
       setTimeout(() => {
         Prism.highlightElement(codeEl, false, function () {
           const xpath = `//text()[contains(., ${JSON.stringify(secret)})]`;
@@ -61,17 +81,17 @@ document.addEventListener('DOMContentLoaded', async () => {
               tempHighlight.className = 'highlight';
               range.surroundContents(tempHighlight);
 
-              tempHighlight.scrollIntoView({
-                behavior: 'auto',
-                block: 'center',
-                inline: 'center'
-              });
+              if (tempHighlight.scrollIntoView) {
+                tempHighlight.scrollIntoView({
+                  behavior: 'auto',
+                  block: 'center',
+                  inline: 'center'
+                });
+              }
             }
           }
         });
-
       }, 10);
-
     } else {
       codeEl.textContent = "[JS Recon Buddy] Error: Could not display content.";
     }
@@ -79,4 +99,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     codeEl.textContent = "[JS Recon Buddy] Error: Failed to parse content from URL.";
     console.error("[JS Recon Buddy] Source viewer error:", e);
   }
-});
+}
+
+document.addEventListener('DOMContentLoaded', initializeViewer);

@@ -17,23 +17,22 @@ let activeTabId;
 let activeTabUrl;
 
 /**
- * @description Main entry point that runs when the popup's DOM is fully loaded.
- * It initializes the UI, disables the scan button for non-scannable pages,
- * attaches the main event listener, and triggers the initial rendering of secrets.
+ * Main logic that runs when the popup's DOM is fully loaded.
  */
-document.addEventListener('DOMContentLoaded', async () => {
+export async function initializePopup() {
   const scanButton = document.getElementById('scan-button');
   const rescanPassiveButton = document.getElementById('rescan-passive-btn');
   [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  const isScannable = activeTab && activeTab.url && activeTab.url.startsWith('http') &&
-    !activeTab.url.startsWith('https://chrome.google.com/webstore') &&
-    !activeTab.url.startsWith('https://chromewebstore.google.com/') &&
-    !activeTab.url.startsWith('https://addons.mozilla.org');
 
   if (!activeTab || !activeTab.id) {
     console.error("[JS Recon Buddy] Could not get active tab.");
     return;
   }
+
+  const isScannable = activeTab.url && activeTab.url.startsWith('http') &&
+    !activeTab.url.startsWith('https://chrome.google.com/webstore') &&
+    !activeTab.url.startsWith('https://chromewebstore.google.com/') &&
+    !activeTab.url.startsWith('https://addons.mozilla.org');
 
   activeTabId = activeTab.id;
   activeTabUrl = activeTab.url;
@@ -70,7 +69,23 @@ document.addEventListener('DOMContentLoaded', async () => {
       findingsList.innerHTML = '<div class="no-findings"><span>Rescanning...</span></div>';
     }
   });
-});
+}
+
+/**
+ * @description Listens for changes in local storage. If the data for the
+ * active tab is updated (e.g., a scan finishes), it re-renders the popup
+ * content dynamically without needing to reopen it.
+ */
+export function storageChangeListener(changes, areaName) {
+  const findingsList = document.getElementById('findings-list');
+  if (!activeTab) return;
+  const pageKey = `${activeTabId}|${activeTabUrl}`;
+
+  if (areaName === 'local' && changes[pageKey] && findingsList) {
+    const updatedData = changes[pageKey].newValue;
+    renderContent(updatedData, findingsList, true);
+  }
+}
 
 /**
  * Asynchronously fetches passive scan data from `chrome.storage.local` and
@@ -79,7 +94,7 @@ document.addEventListener('DOMContentLoaded', async () => {
  * @param {boolean} [isScannable=true] - A flag indicating if the page can be scanned.
  * @returns {Promise<void>}
  */
-async function loadAndRenderSecrets(tab, isScannable = true) {
+export async function loadAndRenderSecrets(tab, isScannable = true) {
   const findingsList = document.getElementById('findings-list');
   if (!findingsList) return;
 
@@ -104,7 +119,7 @@ async function loadAndRenderSecrets(tab, isScannable = true) {
  * @param {HTMLElement} findingsList - The DOM element to render the content into.
  * @param {boolean} [isScannable=true] - A flag indicating if the page can be scanned.
  */
-function renderContent(storedData, findingsList, isScannable = true) {
+export function renderContent(storedData, findingsList, isScannable = true) {
   findingsList.innerHTML = '';
   const rescanButton = document.getElementById('rescan-passive-btn');
   const findingsCountSpan = document.getElementById('findings-count');
@@ -167,6 +182,7 @@ function renderContent(storedData, findingsList, isScannable = true) {
       locationHTML = `<span class="finding-location">:${finding.line}:${finding.column}</span>`;
     }
 
+    let sourceFormatted = '';
     if (finding.source.startsWith('http')) {
       sourceFormatted = `<a target="_blank" href="${finding.source}">${finding.source}</a>${locationHTML}`;
     } else {
@@ -210,18 +226,6 @@ function renderContent(storedData, findingsList, isScannable = true) {
   }
 }
 
-/**
- * @description Listens for changes in local storage. If the data for the
- * active tab is updated (e.g., a scan finishes), it re-renders the popup
- * content dynamically without needing to reopen it.
- */
-chrome.storage.onChanged.addListener((changes, areaName) => {
-  const findingsList = document.getElementById('findings-list');
-  if (!activeTab) return;
-  const pageKey = `${activeTabId}|${activeTabUrl}`;
+document.addEventListener('DOMContentLoaded', initializePopup);
 
-  if (areaName === 'local' && changes[pageKey] && findingsList) {
-    const updatedData = changes[pageKey].newValue;
-    renderContent(updatedData, findingsList);
-  }
-});
+chrome.storage.onChanged.addListener(storageChangeListener);

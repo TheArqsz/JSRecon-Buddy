@@ -13,7 +13,15 @@
     <a href="#how-to-install-or-update">
         <img alt="Firefox Extension" src="https://img.shields.io/badge/Firefox%20Supported-E66000?style=for-the-badge&logo=firefox&logoColor=331E54&link=%23how-to-install-or-update">
     </a>
-    <img alt="GitHub manifest version" src="https://img.shields.io/github/manifest-json/v/TheArqsz/JSRecon-Buddy?style=for-the-badge&label=Ver.">
+    <a href="manifest.json">
+        <img alt="GitHub manifest version" src="https://img.shields.io/github/manifest-json/v/TheArqsz/JSRecon-Buddy?style=for-the-badge&label=Ver.">
+    </a>
+</p>
+
+<p align="center">
+    <a href="https://github.com/TheArqsz/JSRecon-Buddy/actions/workflows/ci.yml">
+        <img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/TheArqsz/JSRecon-Buddy/ci.yml?style=for-the-badge&label=Tests">
+    </a>
 </p>
 
 

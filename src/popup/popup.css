@@ -81,6 +81,11 @@ body {
     gap: 8px;
 }
 
+h1 {
+    font-size: var(--font-size-lg);
+    margin: 0;
+}
+
 h2 {
     font-size: var(--font-size-md);
     margin: 0;

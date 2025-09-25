@@ -1,6 +1,6 @@
 import { describe, test, expect, jest } from '@jest/globals';
 
-jest.unstable_mockModule('../../src/utils/findingUtils.js', () => ({
+jest.unstable_mockModule('../../src/utils/coreUtils.js', () => ({
   shannonEntropy: jest.fn(str => str.length > 5 ? 5 : 3),
   getLineAndColumn: jest.fn(() => ({ line: 1, column: 1 })),
 }));

@@ -68,6 +68,14 @@ export async function initializePopup() {
       findingsList.innerHTML = '<div class="no-findings"><span>Rescanning...</span></div>';
     }
   });
+
+  const settingsButton = document.getElementById('settings-btn');
+
+  if (settingsButton) {
+    settingsButton.addEventListener('click', () => {
+      chrome.runtime.openOptionsPage();
+    });
+  }
 }
 
 /**

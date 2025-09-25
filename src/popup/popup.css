@@ -51,16 +51,8 @@ body {
     gap: 4px;
 }
 
-/*
-.header h2,
-.header h1 {
-	flex-grow: 1;
-	text-align: center;
-	margin: 0;
-} */
-
-.header #rescan-passive-btn {
-    display: none;
+.btn-icon {
+    display: inline-flex;
 
     background: none;
     border: none;
@@ -69,17 +61,24 @@ body {
     margin-left: 5px;
     vertical-align: middle;
     transition: var(--transition-fast);
+    border-radius: 50%;
 }
 
-.header #rescan-passive-btn svg {
+.btn-icon:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.btn-icon svg {
     width: 20px;
     height: 20px;
     fill: var(--color-accent);
 }
 
-h1 {
-    font-size: var(--font-size-lg);
-    margin: 0;
+.findings-header {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 
 h2 {
@@ -234,6 +233,22 @@ label {
     opacity: var(--opacity-disabled);
     justify-self: start;
     cursor: default;
+}
+
+#settings-btn {
+    justify-self: end;
+    margin-left: 0;
+    color: var(--color-text-primary);
+}
+
+#settings-btn svg {
+    fill: var(--color-text-primary);
+    opacity: var(--opacity-disabled);
+}
+
+#settings-btn:hover svg {
+    fill: var(--color-white);
+    opacity: 1;
 }
 
 .footer-link {

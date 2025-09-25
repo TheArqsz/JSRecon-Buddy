@@ -1,2 +1,4 @@
 src/utils/rules.js:pem-certificate:1043
 src/utils/rules.js:rsa-private-key:1030
+tests/offscreen/firefox-scan-worker.test.js:generic-api-key:27
+tests/source-viewer/source-viewer.test.js:generic-api-key:62

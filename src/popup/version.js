@@ -1,6 +1,6 @@
 /**
  * @description Checks for a new extension version by fetching the `manifest.json` from GitHub.
- * It uses a local cache to avoid excessive network requests and updates the UI
+ * It uses a session cache to avoid excessive network requests and updates the UI
  * if the remote version is newer than the currently installed version.
  * @see {@link https://raw.githubusercontent.com/TheArqsz/JSRecon-Buddy/main/manifest.json}
  */
@@ -11,7 +11,7 @@ export async function checkVersion() {
 	if (!githubLink) return;
 
 	try {
-		const cacheData = await chrome.storage.local.get(['versionCache']);
+		const cacheData = await chrome.storage.session.get(['versionCache']);
 		const cache = cacheData.versionCache;
 		const now = new Date().getTime();
 
@@ -30,7 +30,7 @@ export async function checkVersion() {
 
 		const currentVersion = chrome.runtime.getManifest().version;
 		if (compareVersions(latestVersion, currentVersion) <= 0) {
-			await chrome.storage.local.set({
+			await chrome.storage.session.set({
 				versionCache: {
 					latestVersion: latestVersion,
 					timestamp: now

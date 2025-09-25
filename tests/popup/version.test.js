@@ -54,7 +54,7 @@ describe('version.js', () => {
 
   describe('checkVersion', () => {
     test('should use cached data if it is recent and valid', async () => {
-      chrome.storage.local.get.mockResolvedValue({
+      chrome.storage.session.get.mockResolvedValue({
         versionCache: {
           latestVersion: '1.0.1',
           timestamp: Date.now() - 1000
@@ -69,7 +69,7 @@ describe('version.js', () => {
     });
 
     test('should fetch from the network if the cache is expired', async () => {
-      chrome.storage.local.get.mockResolvedValue({
+      chrome.storage.session.get.mockResolvedValue({
         versionCache: {
           latestVersion: '1.0.1',
           timestamp: Date.now() - (10 * 60 * 60 * 1000)
@@ -89,7 +89,7 @@ describe('version.js', () => {
     });
 
     test('should cache the new version if it is not an update', async () => {
-      chrome.storage.local.get.mockResolvedValue({});
+      chrome.storage.session.get.mockResolvedValue({});
       fetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ version: '1.0.0' })
@@ -97,13 +97,13 @@ describe('version.js', () => {
 
       await checkVersion();
 
-      expect(chrome.storage.local.set).toHaveBeenCalled();
+      expect(chrome.storage.session.set).toHaveBeenCalled();
       const link = document.querySelector('.github-link');
       expect(link.classList.contains('update-available')).toBe(false);
     });
 
     test('should not cache the new version if it is an update', async () => {
-      chrome.storage.local.get.mockResolvedValue({});
+      chrome.storage.session.get.mockResolvedValue({});
       fetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ version: '1.1.0' })
@@ -111,7 +111,7 @@ describe('version.js', () => {
 
       await checkVersion();
 
-      expect(chrome.storage.local.set).not.toHaveBeenCalled();
+      expect(chrome.storage.session.set).not.toHaveBeenCalled();
       const link = document.querySelector('.github-link');
       expect(link.classList.contains('update-available')).toBe(true);
     });

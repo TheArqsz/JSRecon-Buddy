@@ -1,0 +1,13 @@
+{
+  "name": "jsrecon-buddy",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
+  },
+  "devDependencies": {
+    "jest": "30.1.3",
+    "jest-environment-jsdom": "30.1.2",
+    "jest-webextension-mock": "4.0.0"
+  }
+}

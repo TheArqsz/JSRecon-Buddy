@@ -1,3 +1,5 @@
+import { isScannable as isScannableFunc } from '../utils/coreUtils.js';
+
 /**
  * @description The full active tab object, stored globally for access by various functions and listeners.
  * @type {chrome.tabs.Tab}
@@ -29,10 +31,7 @@ export async function initializePopup() {
     return;
   }
 
-  const isScannable = activeTab.url && activeTab.url.startsWith('http') &&
-    !activeTab.url.startsWith('https://chrome.google.com/webstore') &&
-    !activeTab.url.startsWith('https://chromewebstore.google.com/') &&
-    !activeTab.url.startsWith('https://addons.mozilla.org');
+  const isScannable = await isScannableFunc(activeTab.url);
 
   activeTabId = activeTab.id;
   activeTabUrl = activeTab.url;
@@ -125,7 +124,7 @@ export function renderContent(storedData, findingsList, isScannable = true) {
   const findingsCountSpan = document.getElementById('findings-count');
 
   if (!isScannable) {
-    findingsList.innerHTML = '<div class="no-findings"><span>This page type (e.g., chrome://, edge:// or specific extension stores) cannot be scanned for secrets.</span></div>';
+    findingsList.innerHTML = '<div class="no-findings"><span>This page type (e.g., chrome://, edge:// or excluded URL) cannot be scanned for secrets.</span></div>';
     return;
   }
 

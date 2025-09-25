@@ -1,4 +1,4 @@
-import { shannonEntropy, getLineAndColumn } from '../utils/findingUtils.js';
+import { shannonEntropy, getLineAndColumn } from '../utils/coreUtils.js';
 
 /**
  * Listens for and routes incoming messages from the service worker.

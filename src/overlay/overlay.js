@@ -14,7 +14,7 @@
 			chrome.runtime.getURL("src/utils/patterns.js")
 		);
 		const { shannonEntropy, getLineAndColumn, getDOMAsText } = await import(
-			chrome.runtime.getURL("src/utils/findingUtils.js")
+			chrome.runtime.getURL("src/utils/coreUtils.js")
 		);
 		const OVERLAY_ID = "bug-bounty-scanner-overlay";
 		const CACHE_KEY_PREFIX = "scan_cache_";

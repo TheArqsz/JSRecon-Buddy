@@ -15,6 +15,7 @@
   "host_permissions": [
     "<all_urls>"
   ],
+  "options_page": "src/options/options.html",
   "action": {
     "default_title": "JS Recon Buddy",
     "default_popup": "src/popup/popup.html"
@@ -39,7 +40,7 @@
         "src/overlay/overlay.html",
         "src/overlay/overlay.css",
         "src/utils/rules.js",
-        "src/utils/findingUtils.js",
+        "src/utils/coreUtils.js",
         "src/utils/sourceMapParser.js",
         "src/utils/patterns.js"
       ],

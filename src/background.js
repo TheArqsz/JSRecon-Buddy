@@ -1,4 +1,5 @@
 import { secretRules } from './utils/rules.js';
+import { isScannable } from './utils/coreUtils.js';
 
 const MAX_CONTENT_SIZE_BYTES = 5 * 1024 * 1024;
 
@@ -46,22 +47,6 @@ let activeFetches = 0;
  * @type {number}
  */
 const MAX_CONCURRENT_FETCHES = 3;
-
-/**
- * Determines if a given URL is scannable by the extension.
- *
- * A URL is considered scannable if it is a standard webpage (starts with 'http')
- * and is not a protected or restricted domain, such as the Chrome Web Store.
- *
- * @param {string | undefined | null} url The URL to validate.
- * @returns {boolean} `true` if the URL is scannable, otherwise `false`.
- */
-const isScannable = (url) => {
-  return url && url.startsWith('http') &&
-    !url.startsWith('https://chrome.google.com/webstore') &&
-    !url.startsWith('https://chromewebstore.google.com/') &&
-    !url.startsWith('https://addons.mozilla.org')
-};
 
 /**
  * Checks which browser the extension is running in.
@@ -125,8 +110,8 @@ function processFetchQueue() {
  * It sets a "scanning" visual state when a page starts loading and
  * initiates the actual scan once the page is fully loaded.
  */
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (!tab || !isScannable(tab.url)) {
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  if (!tab || !(await isScannable(tab.url))) {
     return;
   }
   if (changeInfo.status === 'loading') {
@@ -142,8 +127,8 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
  * the event is for the main frame (`frameId === 0`) to avoid incorrectly
  * triggering new scans for every iframe that finishes loading on the page.
  */
-chrome.webNavigation.onCompleted.addListener((details) => {
-  if (!details || !isScannable(details.url)) {
+chrome.webNavigation.onCompleted.addListener(async (details) => {
+  if (!details || !(await isScannable(details.url))) {
     return;
   }
   if (details.frameId === 0) {
@@ -162,8 +147,8 @@ chrome.tabs.onActivated.addListener((activeInfo) => {
 /**
  * Listens for client-side navigations in Single Page Applications (e.g., React, Angular).
  */
-chrome.webNavigation.onHistoryStateUpdated.addListener((details) => {
-  if (!details || !isScannable(details.url)) {
+chrome.webNavigation.onHistoryStateUpdated.addListener(async (details) => {
+  if (!details || !(await isScannable(details.url))) {
     return;
   }
   if (details.frameId === 0) {
@@ -333,7 +318,7 @@ async function isValidTab(tabId) {
 async function setInitialLoadingState(tabId) {
   try {
     const tab = await chrome.tabs.get(tabId);
-    if (!tab || !isScannable(tab.url)) {
+    if (!tab || !(await isScannable(tab.url))) {
       return;
     }
 
@@ -386,7 +371,7 @@ async function triggerPassiveScan(tabId, force = false) {
       return;
     }
     const tab = await chrome.tabs.get(tabId);
-    if (!tab || !isScannable(tab.url)) {
+    if (!tab || !(await isScannable(tab.url))) {
       return;
     }
 
@@ -801,7 +786,13 @@ async function updateActionUI(tabId, findingsCount) {
       chrome.action.setBadgeText({ tabId, text: '' });
       chrome.action.setTitle({ tabId, title: '' });
     }
-    await updateTabTitle(tabId, findingsCount);
+
+    const { showTitleNotification } = await chrome.storage.sync.get({ showTitleNotification: true });
+    if (showTitleNotification) {
+      await updateTabTitle(tabId, findingsCount);
+    } else {
+      await updateTabTitle(tabId, 0);
+    }
   } catch (error) {
     if (error.message.includes('No tab with id')) {
       console.warn("[JS Recon Buddy] The tab that we were working on was prematurely closed")

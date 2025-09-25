@@ -97,7 +97,6 @@ export function isUrlExcluded(url, excludedList) {
     try {
       if (pattern.startsWith('/') && pattern.endsWith('/')) {
         const regex = new RegExp(pattern.slice(1, -1));
-        console.error(regex, url);
         if (regex.test(url)) return true;
       } else {
         if (url.includes(pattern)) return true;

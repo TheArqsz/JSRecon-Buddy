@@ -1,3 +1,11 @@
+## [1.9.1](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.9.0...v1.9.1) (2025-09-25)
+
+
+### Bug Fixes
+
+* Fixed popup's header size ([a73bbea](https://github.com/TheArqsz/JSRecon-Buddy/commit/a73bbeaa2ffa85f1f89cc4e22a5118fe9127de00))
+* Fixed version to use session instead of local and properly refresh ([5589a6d](https://github.com/TheArqsz/JSRecon-Buddy/commit/5589a6d260cae6b1a88e864d6cccb0843acd69f3))
+
 ## [1.9.0](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.8.3...v1.9.0) (2025-09-25)
 
 

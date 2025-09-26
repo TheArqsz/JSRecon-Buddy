@@ -41,6 +41,7 @@
         "src/overlay/overlay.css",
         "src/utils/rules.js",
         "src/utils/coreUtils.js",
+        "src/utils/overlayUtils.js",
         "src/utils/sourceMapParser.js",
         "src/utils/patterns.js"
       ],

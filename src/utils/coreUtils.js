@@ -43,7 +43,9 @@ export function getLineAndColumn(content, index) {
  * full HTML text string.
  *
  * This is an approximation of the "View Source" content but reflects
- * any modifications made by JavaScript after the page has loaded.
+ * any modifications made by JavaScript after the page has loaded. It
+ * gracefully handles pages without a DOCTYPE by providing a standard
+ * HTML5 doctype as a fallback.
  *
  * @returns {string} A string representing the complete, current HTML
  * of the document, including the DOCTYPE declaration.
@@ -52,9 +54,12 @@ export function getLineAndColumn(content, index) {
  * console.log(currentPageHTML);
  */
 export function getDOMAsText() {
-  const doctype = new XMLSerializer().serializeToString(document.doctype);
+  const doctypeString = document.doctype
+    ? new XMLSerializer().serializeToString(document.doctype)
+    : '<!DOCTYPE html>';
+
   const html = document.documentElement.outerHTML;
-  return doctype + '\n' + html;
+  return doctypeString + '\n' + html;
 }
 
 /**

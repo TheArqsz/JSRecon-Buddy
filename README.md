@@ -7,10 +7,10 @@
 
 
 <p align="center">
-    <a href="#how-to-install-or-update">
+    <a href="#chromium-based-browser">
         <img alt="Chromium Extension" src="https://img.shields.io/badge/Chromium%20Supported-blue?style=for-the-badge&logo=googlechrome&logoColor=white">
     </a>
-    <a href="#how-to-install-or-update">
+    <a href="#firefox">
         <img alt="Firefox Extension" src="https://img.shields.io/badge/Firefox%20Supported-E66000?style=for-the-badge&logo=firefox&logoColor=331E54&link=%23how-to-install-or-update">
     </a>
     <a href="manifest.json">

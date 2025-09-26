@@ -51,10 +51,15 @@ export function decodeText(str) {
 
 /**
  * A utility to extract the current hostname and its base domain from the page URL.
- * @returns {{currentHostname: string, baseDomain: string}} An object containing hostname info.
+ * @param {string} hostname - The hostname to process.
+ * @returns {{currentHostname: string, baseDomain: string}|null} An object containing hostname info.
  */
-export function getDomainInfo() {
-  const hostname = window.location.hostname;
+export function getDomainInfo(hostname) {
+  const ipRegex = /^((25[0-5]|(2[0-4]|1[0-9]|[1-9]|)[0-9])(\.(?!$)|$)){4}$/;
+  if (ipRegex.test(hostname)) {
+    return { currentHostname: null, baseDomain: null };;
+  }
+
   const parts = hostname.split(".");
   if (parts.length <= 2)
     return { currentHostname: hostname, baseDomain: hostname };
@@ -266,13 +271,17 @@ export async function gatherScripts(mainHtml) {
  */
 export async function processScriptsAsync(scripts, patterns, dependencies, onProgress) {
   const { shannonEntropy, getLineAndColumn } = dependencies;
-  const { currentHostname, baseDomain } = getDomainInfo();
+  const hostname = window.location.hostname;
 
-  const isValidSubdomain = (domain) =>
-    domain === currentHostname ||
-    domain.endsWith(`.${currentHostname}`) ||
-    domain === baseDomain ||
-    domain.endsWith(`.${baseDomain}`);
+  let isValidSubdomain = () => false;
+  const { currentHostname, baseDomain } = getDomainInfo(hostname);
+  if (currentHostname) {
+    isValidSubdomain = (domain) =>
+      domain === currentHostname ||
+      domain.endsWith(`.${currentHostname}`) ||
+      domain === baseDomain ||
+      domain.endsWith(`.${baseDomain}`);
+  }
   const isValidEntropy = (secret, ruleEntropy) => shannonEntropy(secret) >= ruleEntropy;
   const isValidEndpoint = (endpoint) => !/^\/+$/.test(endpoint);
 

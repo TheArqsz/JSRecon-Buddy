@@ -152,7 +152,9 @@ This approach was chosen to avoid maintaining two separate versions of the exten
 
 ### Chromium-based browser
 
-Since this extension is not on the Chrome Web Store, it must be loaded as an unpacked extension in developer mode.
+While I strongly advice for this extension to be loaded as an unpacked extension in developer mode, it can be installed [directly from the Chrome Web Store](https://chromewebstore.google.com/detail/emihdlmaomlajmkaanockgjhojehafnp). 
+
+However, if you decide to do it manually, here are the steps:
 
 1. Download [ZIP from releases](https://github.com/TheArqsz/JSRecon-Buddy/releases/latest/download/js-recon-buddy.zip) or clone this repository to your local machine.
 

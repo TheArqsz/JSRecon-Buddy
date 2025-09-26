@@ -1,3 +1,10 @@
+## [1.9.2](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.9.1...v1.9.2) (2025-09-26)
+
+
+### Bug Fixes
+
+* Added handler for IPs in getDomainInfo ([8ba2903](https://github.com/TheArqsz/JSRecon-Buddy/commit/8ba2903a96aabd2b6c0e179be1113228b0bcd558))
+
 ## [1.9.1](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.9.0...v1.9.1) (2025-09-25)
 
 

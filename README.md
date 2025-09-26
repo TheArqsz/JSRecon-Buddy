@@ -166,7 +166,9 @@ The extension will now be installed or updated.
 
 ### Firefox
 
-TBD
+You can follow a similar path for the Chromium-based browser. The debug URL is [`about:debugging#/runtime/this-firefox`](about:debugging#/runtime/this-firefox). Fortunately, the Mozilla Add-on Store has fewer restrictions than the Chrome Web Store.
+
+You can find my extension [here in the official Add-on Store](https://addons.mozilla.org/en-US/firefox/addon/js-recon-buddy/). Just click *Add to Firefox* and have fun.
 
 ## How to use?
 

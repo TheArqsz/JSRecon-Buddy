@@ -72,3 +72,17 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           make_latest: true
           body: ${{ steps.changelog.outputs.clean_changelog }}
+
+      - name: Publish to Firefox Add-on Store
+        if: ${{ steps.changelog.outputs.skipped == 'false' }}
+        uses: wdzeng/firefox-addon@v1
+        with:
+          addon-guid: '@jsrecon-buddy'
+          xpi-path: js-recon-buddy.zip
+          self-hosted: false
+          license: MIT
+          jwt-issuer: ${{ secrets.FIREFOX_ISSUER }}
+          jwt-secret: ${{ secrets.FIREFOX_SECRET }}
+          approval-notes: |
+            Automated submission from GitHub Actions for version ${{ steps.changelog.outputs.tag }}.
+            For more information, please visit the [GitHub repository](https://github.com/${{ github.repository }}/releases/tag/${{ steps.changelog.outputs.tag }}).

@@ -1,3 +1,10 @@
+## [1.9.3](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.9.2...v1.9.3) (2025-09-26)
+
+
+### Bug Fixes
+
+* Fixed getDOMAsText not properly handling pages without proper doctype ([1861e95](https://github.com/TheArqsz/JSRecon-Buddy/commit/1861e9557136ab38071520c31fe71706d706fe48))
+
 ## [1.9.2](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.9.1...v1.9.2) (2025-09-26)
 
 

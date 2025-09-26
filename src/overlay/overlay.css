@@ -286,7 +286,7 @@
 }
 
 .scanner summary::before {
-    content: "▶";
+    content: ">";
     display: inline-block;
     margin-inline-end: 6px;
     transform: rotate(0deg);

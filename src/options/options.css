@@ -6,7 +6,7 @@
     --color-text-success: #98c379;
     --color-danger: #ff3b30;
     --color-border: #444;
-    --color-accent: #00bcd4;
+    --color-accent: #4CAF50;
     --color-accent-hover: #0097a7;
     --color-white: #ffffff;
 
@@ -148,7 +148,7 @@ textarea.invalid:focus {
 }
 
 .btn-primary:hover {
-    background-color: var(--color-accent-hover);
+    filter: brightness(80%);
 }
 
 #status-message {

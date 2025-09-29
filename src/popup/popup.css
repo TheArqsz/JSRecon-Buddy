@@ -6,8 +6,8 @@
     --color-text-on-accent: #21252b;
     --color-text-success: #98c379;
     --color-border: #444;
-    --color-accent: #00bcd4;
-    --color-accent-hover: #0097a7;
+    --color-accent: #66bb6a;
+    --color-accent-hover: #4CAF50;
     --color-white: #ffffff;
     --color-notification: var(--color-text-danger);
 
@@ -205,7 +205,7 @@ label {
 }
 
 .btn-primary:hover {
-    background-color: var(--color-accent-hover);
+    filter: brightness(80%)
 }
 
 .separator {

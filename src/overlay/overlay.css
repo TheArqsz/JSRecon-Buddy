@@ -1,8 +1,8 @@
 :host {
-    --color-primary: #008cba;
-    --color-secondary: #00bcd4;
+    --color-primary: #66bb6a;
+    --color-secondary: #4CAF50;
     --color-danger: #c7372f;
-    --color-info: #337ab7;
+    --color-info: #8bc38c;
     --color-highlight-bg: #ffeb3b;
     --color-highlight-text: #000;
     --color-text-light: #fff;
@@ -18,7 +18,7 @@
     --color-border-heavy: #888;
     --color-disabled: #555;
     --color-summary-sticky-bg: rgba(15, 23, 42, 0.95);
-    --color-clickable-source: #89ddff;
+    --color-clickable-source: #c8e6c9;
 
     --font-family-monospace: monospace;
     --font-size-base: 0.875rem;
@@ -89,7 +89,7 @@
 }
 
 #scan-status.live-scan {
-    background-color: #98c379;
+    background-color: var(--color-secondary);
     font-weight: bold;
 }
 
@@ -127,6 +127,7 @@
 
 .scanner-overlay__results>details>summary .btn--copy-section {
     margin-left: auto;
+    color: var(--color-highlight-text);
 }
 
 .scanner-overlay__results>details>summary span {
@@ -181,6 +182,7 @@
 }
 
 .scanner .btn--primary {
+    color: var(--color-highlight-text);
     background-color: var(--color-primary);
 }
 

@@ -19,11 +19,43 @@ let activeTabId;
 let activeTabUrl;
 
 /**
+ * Updates the entire popup UI based on whether scanning is enabled or disabled.
+ * @param {boolean} isEnabled - The current state of the scanning toggle.
+ */
+export async function updateUIVisibility(isEnabled) {
+  const mainContent = document.getElementById('main-content');
+  const disabledContent = document.getElementById('disabled-content');
+  const scanButton = document.getElementById('scan-button');
+
+  if (isEnabled) {
+    mainContent.style.display = 'block';
+    disabledContent.style.display = 'none';
+
+    const isScannable = await isScannableFunc(activeTabUrl);
+    if (scanButton) {
+      scanButton.disabled = !isScannable;
+      scanButton.title = isScannable ? "" : "This page cannot be scanned.";
+    }
+
+    loadAndRenderSecrets(activeTab, isScannable);
+  } else {
+    mainContent.style.display = 'none';
+    disabledContent.style.display = 'block';
+    if (scanButton) {
+      scanButton.disabled = true;
+      scanButton.title = "Scanning is turned off.";
+    }
+  }
+}
+
+/**
  * Main logic that runs when the popup's DOM is fully loaded.
  */
 export async function initializePopup() {
   const scanButton = document.getElementById('scan-button');
   const rescanPassiveButton = document.getElementById('rescan-passive-btn');
+  const scanToggle = document.getElementById('scan-toggle');
+
   [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
   if (!activeTab || !activeTab.id) {
@@ -35,6 +67,22 @@ export async function initializePopup() {
 
   activeTabId = activeTab.id;
   activeTabUrl = activeTab.url;
+
+  const { isScanningEnabled } = await chrome.storage.sync.get({ isScanningEnabled: true });
+  scanToggle.checked = isScanningEnabled;
+  await updateUIVisibility(isScanningEnabled);
+
+  scanToggle.addEventListener('change', async (event) => {
+    const isEnabled = event.target.checked;
+    await chrome.storage.sync.set({ isScanningEnabled: isEnabled });
+
+    chrome.runtime.sendMessage({
+      type: 'SCANNING_STATE_CHANGED',
+      isEnabled: isEnabled
+    });
+
+    await updateUIVisibility(isEnabled);
+  });
 
   if (!isScannable) {
     scanButton.disabled = true;

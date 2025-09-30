@@ -112,3 +112,14 @@ export function isUrlExcluded(url, excludedList) {
   }
   return false;
 }
+
+/**
+ * Checks if scanning is globally enabled by the user.
+ * The setting is retrieved from `chrome.storage.sync` and defaults to true.
+ * @async
+ * @returns {Promise<boolean>} A promise that resolves to `true` if scanning is enabled, otherwise `false`.
+ */
+export async function isScanningGloballyEnabled() {
+  const { isScanningEnabled } = await chrome.storage.sync.get({ isScanningEnabled: true });
+  return isScanningEnabled;
+}

@@ -1,5 +1,5 @@
 import { secretRules } from './utils/rules.js';
-import { isScannable } from './utils/coreUtils.js';
+import { isScannable, isScanningGloballyEnabled } from './utils/coreUtils.js';
 
 const MAX_CONTENT_SIZE_BYTES = 5 * 1024 * 1024;
 
@@ -64,6 +64,31 @@ async function checkBrowser() {
 }
 
 /**
+ * Sets the extension icon to a neutral/disabled state for a specific tab.
+ * @param {number} tabId The ID of the tab to update.
+ */
+async function setDisabledIconForTab(tabId) {
+  if (!(await isValidTab(tabId))) return;
+
+  const browserName = await checkBrowser();
+  let iconsPath = 'icons';
+  if (browserName === 'firefox') {
+    iconsPath = 'src/icons';
+  }
+
+  try {
+    chrome.action.setIcon({ tabId, path: `${iconsPath}/icon-scanning-128.png` });
+    chrome.action.setBadgeText({ tabId, text: 'OFF' });
+    chrome.action.setBadgeBackgroundColor({ tabId, color: '#949494ff' });
+    chrome.action.setTitle({ tabId, title: 'Scanning is turned off' });
+  } catch (error) {
+    if (!error.message.includes('No tab with id')) {
+      console.warn(`[JS Recon Buddy] Could not set disabled icon for tab ${tabId}:`, error.message);
+    }
+  }
+}
+
+/**
  * A throttled fetch function that uses a queue to limit concurrent network requests.
  * @param {string} url The URL to fetch.
  * @returns {Promise<string|null>} A promise that resolves with the content text or null on error.
@@ -111,6 +136,9 @@ function processFetchQueue() {
  * initiates the actual scan once the page is fully loaded.
  */
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  if (tab && !(await isScanningGloballyEnabled())) {
+    return setDisabledIconForTab(tabId);
+  }
   if (!tab || !(await isScannable(tab.url))) {
     return;
   }
@@ -128,6 +156,8 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
  * triggering new scans for every iframe that finishes loading on the page.
  */
 chrome.webNavigation.onCompleted.addListener(async (details) => {
+  if (!(await isScanningGloballyEnabled())) return;
+
   if (!details || !(await isScannable(details.url))) {
     return;
   }
@@ -140,7 +170,9 @@ chrome.webNavigation.onCompleted.addListener(async (details) => {
  * Listens for when the active tab changes.
  * This ensures the icon is updated instantly when switching to a tab that has already been scanned.
  */
-chrome.tabs.onActivated.addListener((activeInfo) => {
+chrome.tabs.onActivated.addListener(async (activeInfo) => {
+  if (!(await isScanningGloballyEnabled())) return;
+
   triggerPassiveScan(activeInfo.tabId);
 });
 
@@ -148,6 +180,8 @@ chrome.tabs.onActivated.addListener((activeInfo) => {
  * Listens for client-side navigations in Single Page Applications (e.g., React, Angular).
  */
 chrome.webNavigation.onHistoryStateUpdated.addListener(async (details) => {
+  if (!(await isScanningGloballyEnabled())) return;
+
   if (!details || !(await isScannable(details.url))) {
     return;
   }
@@ -176,73 +210,102 @@ chrome.tabs.onRemoved.addListener((tabId) => {
  * on-demand scan or fetching external scripts for a content script.
  */
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  try {
-    if (request.type === "SCAN_PAGE") {
-      const targetTabId = request.tabId;
-      chrome.scripting.insertCSS({
-        target: { tabId: targetTabId },
-        files: ["src/overlay/overlay.css"],
-      });
-      chrome.scripting.executeScript({
-        target: { tabId: targetTabId },
-        files: ["src/overlay/overlay.js"],
-      });
-      sendResponse({ status: "ok" });
-    }
-
-    if (request.type === "FETCH_SCRIPTS") {
-      const fetchPromises = request.urls.map((url) =>
-        fetch(url)
-          .then((res) => (res.ok ? res.text() : Promise.reject()))
-          .then((code) => ({ source: url, code }))
-          .catch(() => null),
-      );
-      Promise.all(fetchPromises).then((results) => sendResponse(results));
-      return true;
-    }
-
-    if (request.type === 'FORCE_PASSIVE_RESCAN') {
-      const { tabId } = request;
-      for (const key of scannedPages.keys()) {
-        if (key.startsWith(`${tabId}|`)) {
-          scannedPages.delete(key);
+  (async () => {
+    try {
+      if (request.type === "SCAN_PAGE" || request.type === 'FORCE_PASSIVE_RESCAN') {
+        if (!(await isScanningGloballyEnabled())) {
+          if (sendResponse) sendResponse({ status: "disabled" });
+          return;
         }
       }
-      triggerPassiveScan(tabId, true);
-      return;
-    }
 
-    if (request.type === 'FETCH_FROM_CONTENT_SCRIPT') {
-      fetch(request.url)
-        .then(response => {
-          if (response && response.status === 404) {
-            return { status: 'not_found' };
-          }
-          if (!response.ok) {
-            throw new Error(`Fetch error - HTTP status ${response.status}`);
-          }
-          return response.json();
-        })
-        .then(json => sendResponse(json))
-        .catch(error => {
-          console.warn(`[JS Recon Buddy] Error fetching the content for URL ${request.url}:`, error);
-          sendResponse({ status: 'error', message: error.message });
+      if (request.type === "SCAN_PAGE") {
+        const targetTabId = request.tabId;
+        chrome.scripting.insertCSS({
+          target: { tabId: targetTabId },
+          files: ["src/overlay/overlay.css"],
         });
-
-      return true;
-    }
-
-    if (request.type === 'CLEAR_STALE_CACHE') {
-      if (typeof request.cacheKeyPrefix === 'string' && typeof request.maxCacheAge === 'number') {
-        clearStaleLocalCache(request.cacheKeyPrefix, request.maxCacheAge);
-      } else {
-        console.warn('[JS Recon Buddy] CLEAR_STALE_CACHE message received without a valid maxCacheAge.');
+        chrome.scripting.executeScript({
+          target: { tabId: targetTabId },
+          files: ["src/overlay/overlay.js"],
+        });
+        sendResponse({ status: "ok" });
       }
+
+      if (request.type === "FETCH_SCRIPTS") {
+        const fetchPromises = request.urls.map((url) =>
+          fetch(url)
+            .then((res) => (res.ok ? res.text() : Promise.reject()))
+            .then((code) => ({ source: url, code }))
+            .catch(() => null),
+        );
+        Promise.all(fetchPromises).then((results) => sendResponse(results));
+        return true;
+      }
+
+      if (request.type === 'FORCE_PASSIVE_RESCAN') {
+        const { tabId } = request;
+        for (const key of scannedPages.keys()) {
+          if (key.startsWith(`${tabId}|`)) {
+            scannedPages.delete(key);
+          }
+        }
+        triggerPassiveScan(tabId, true);
+        return;
+      }
+
+      if (request.type === 'FETCH_FROM_CONTENT_SCRIPT') {
+        fetch(request.url)
+          .then(response => {
+            if (response && response.status === 404) {
+              return { status: 'not_found' };
+            }
+            if (!response.ok) {
+              throw new Error(`Fetch error - HTTP status ${response.status}`);
+            }
+            return response.json();
+          })
+          .then(json => sendResponse(json))
+          .catch(error => {
+            console.warn(`[JS Recon Buddy] Error fetching the content for URL ${request.url}:`, error);
+            sendResponse({ status: 'error', message: error.message });
+          });
+
+        return true;
+      }
+
+      if (request.type === 'CLEAR_STALE_CACHE') {
+        if (typeof request.cacheKeyPrefix === 'string' && typeof request.maxCacheAge === 'number') {
+          clearStaleLocalCache(request.cacheKeyPrefix, request.maxCacheAge);
+        } else {
+          console.warn('[JS Recon Buddy] CLEAR_STALE_CACHE message received without a valid maxCacheAge.');
+        }
+      }
+
+      if (request.type === 'GET_HEADER_DATA') {
+        const tabUrl = request.url;
+        chrome.storage.session.get(`header_analysis_${tabUrl}`).then(data => {
+          sendResponse(data[`header_analysis_${tabUrl}`].results || []);
+        });
+        return true;
+      }
+
+      if (request.type === 'SCANNING_STATE_CHANGED') {
+        const tabs = await chrome.tabs.query({});
+        for (const tab of tabs) {
+          if (request.isEnabled) {
+            triggerPassiveScan(tab.id);
+          } else {
+            await setDisabledIconForTab(tab.id);
+          }
+        }
+      }
+    } catch (error) {
+      if (error.message.includes('No tab with id')) return;
+      console.warn(`[JS Recon Buddy] Error in onMessage listener:`, error);
     }
-  } catch (error) {
-    if (error.message.includes('No tab with id')) return;
-    console.warn(`[JS Recon Buddy] Error in onMessage listener:`, error);
-  }
+  })();
+  return true;
 });
 
 /**

@@ -10,22 +10,33 @@
     <div class="container">
         <div class="header">
             <h1>JS Recon Buddy</h1>
+            <div class="toggle-container">
+                <label class="switch">
+                    <input type="checkbox" id="scan-toggle">
+                    <span class="slider round"></span>
+                </label>
+            </div>
         </div>
+        <main id="main-content">
+            <button id="scan-button" class="btn btn-primary">Analyze Full Page</button>
+            <div class="separator"></div>
 
-        <button id="scan-button" class="btn btn-primary">Analyze Full Page</button>
-        <div class="separator"></div>
+            <div class="header findings-header">
+                <h2>Passive Secret Findings <span id="findings-count"></span></h2>
+                <button id="rescan-passive-btn" class="btn-icon" title="Force Rescan">
+                    <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px"
+                        fill="#e3e3e3">
+                        <path
+                            d="M480-160q-134 0-227-93t-93-227q0-134 93-227t227-93q69 0 132 28.5T720-690v-110h80v280H520v-80h168q-32-56-87.5-88T480-720q-100 0-170 70t-70 170q0 100 70 170t170 70q77 0 139-44t87-116h84q-28 106-114 173t-196 67Z" />
+                    </svg>
+                </button>
+            </div>
+            <div id="findings-list">
+            </div>
+        </main>
 
-        <div class="header findings-header">
-            <h2>Passive Secret Findings <span id="findings-count"></span></h2>
-            <button id="rescan-passive-btn" class="btn-icon" title="Force Rescan">
-                <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px"
-                    fill="#e3e3e3">
-                    <path
-                        d="M480-160q-134 0-227-93t-93-227q0-134 93-227t227-93q69 0 132 28.5T720-690v-110h80v280H520v-80h168q-32-56-87.5-88T480-720q-100 0-170 70t-70 170q0 100 70 170t170 70q77 0 139-44t87-116h84q-28 106-114 173t-196 67Z" />
-                </svg>
-            </button>
-        </div>
-        <div id="findings-list">
+        <div id="disabled-content" style="display: none;">
+            <p>Scanning is turned off. Turn it on to find secrets or analyze a webpage.</p>
         </div>
 
         <div class="footer-container">

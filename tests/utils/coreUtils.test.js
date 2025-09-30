@@ -5,8 +5,11 @@ import {
   getLineAndColumn,
   getDOMAsText,
   isScannable,
-  isUrlExcluded
+  isUrlExcluded,
+  isScanningGloballyEnabled
 } from '../../src/utils/coreUtils.js';
+
+import { initializePopup } from '../../src/popup/popup.js';
 
 describe('shannonEntropy', () => {
   test('should return 0 for an empty or null string', () => {
@@ -130,5 +133,59 @@ describe('isScannable', () => {
     const result = await isScannable('https://chrome.google.com/webstore/detail/some-extension');
     expect(chrome.storage.sync.get).not.toHaveBeenCalled();
     expect(result).toBe(false);
+  });
+});
+
+describe('isScanningGloballyEnabled', () => {
+  beforeEach(async () => {
+    chrome.storage.sync.get.mockClear();
+    document.body.innerHTML = `
+      <label class="switch">
+        <input type="checkbox" id="scan-toggle">
+        <span class="slider round"></span>
+      </label>
+      <button id="scan-button"></button>
+      <button id="rescan-passive-btn"></button>
+      <button id="settings-btn"></button>
+      <main id="main-content"></main>
+      <div id="disabled-content"></div>
+      <div id="findings-list"></div>
+      <span id="findings-count"></span>
+      <span id="version-display"></span>
+    `;
+  });
+
+  test('should return true when the setting in storage is explicitly true', async () => {
+    chrome.storage.sync.get.mockResolvedValue({ isScanningEnabled: true });
+
+    const result = await isScanningGloballyEnabled();
+
+    expect(result).toBe(true);
+    expect(chrome.storage.sync.get).toHaveBeenCalledWith({ isScanningEnabled: true });
+  });
+
+  test('should return false when the setting in storage is explicitly false', async () => {
+    chrome.storage.sync.get.mockResolvedValue({ isScanningEnabled: false });
+
+    const result = await isScanningGloballyEnabled();
+
+    expect(result).toBe(false);
+    expect(chrome.storage.sync.get).toHaveBeenCalledWith({ isScanningEnabled: true });
+  });
+
+  test('should return true when the setting is not present in storage (default case)', async () => {
+    chrome.storage.sync.get.mockImplementation(defaults => Promise.resolve(defaults));
+
+    const result = await isScanningGloballyEnabled();
+
+    expect(result).toBe(true);
+    expect(chrome.storage.sync.get).toHaveBeenCalledWith({ isScanningEnabled: true });
+  });
+
+  test('should handle storage API errors gracefully', async () => {
+    const mockError = new Error('Storage API is unavailable');
+    chrome.storage.sync.get.mockRejectedValue(mockError);
+
+    await expect(isScanningGloballyEnabled()).rejects.toThrow('Storage API is unavailable');
   });
 });

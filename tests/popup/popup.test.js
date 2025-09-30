@@ -18,12 +18,19 @@ const flushPromises = () => new Promise(process.nextTick);
 describe('Popup UI and Logic', () => {
   beforeEach(() => {
     document.body.innerHTML = `
-            <button id="scan-button"></button>
-            <button id="rescan-passive-btn"></button>
-            <div id="findings-list"></div>
-            <span id="findings-count"></span>
-            <span id="version-display"></span>
-        `;
+      <label class="switch">
+        <input type="checkbox" id="scan-toggle">
+        <span class="slider round"></span>
+      </label>
+      <button id="scan-button"></button>
+      <button id="rescan-passive-btn"></button>
+      <button id="settings-btn"></button>
+      <main id="main-content"></main>
+      <div id="disabled-content"></div>
+      <div id="findings-list"></div>
+      <span id="findings-count"></span>
+      <span id="version-display"></span>
+    `;
     jest.clearAllMocks();
     chrome.tabs.query.mockResolvedValue([{ id: 1, url: 'https://localhost' }]);
     chrome.storage.local.get.mockResolvedValue({});

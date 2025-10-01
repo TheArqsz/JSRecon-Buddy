@@ -1,3 +1,10 @@
+## [1.10.0](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.9.3...v1.10.0) (2025-10-01)
+
+
+### Features
+
+* Added on/off toggle implementing feature requested in [#2](https://github.com/TheArqsz/JSRecon-Buddy/issues/2) ([708bb30](https://github.com/TheArqsz/JSRecon-Buddy/commit/708bb3076547849a41de9257199d719edb936835))
+
 ## [1.9.3](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.9.2...v1.9.3) (2025-09-26)
 
 

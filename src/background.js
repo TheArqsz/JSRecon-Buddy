@@ -1,5 +1,5 @@
 import { secretRules } from './utils/rules.js';
-import { isScannable, isScanningGloballyEnabled } from './utils/coreUtils.js';
+import { isScannable, isScanningGloballyEnabled, isPassiveScanningEnabled } from './utils/coreUtils.js';
 
 const MAX_CONTENT_SIZE_BYTES = 5 * 1024 * 1024;
 
@@ -155,7 +155,7 @@ function processFetchQueue() {
  * initiates the actual scan once the page is fully loaded.
  */
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  if (tab && !(await isScanningGloballyEnabled())) {
+  if (tab && !(await isScanningGloballyEnabled() && await isPassiveScanningEnabled())) {
     return setDisabledIconForTab(tabId);
   }
   if (!tab || !(await isScannable(tab.url))) {
@@ -175,7 +175,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
  * triggering new scans for every iframe that finishes loading on the page.
  */
 chrome.webNavigation.onCompleted.addListener(async (details) => {
-  if (!(await isScanningGloballyEnabled())) return;
+  if (!(await isScanningGloballyEnabled() && await isPassiveScanningEnabled())) return;
 
   if (!details || !(await isScannable(details.url))) {
     return;
@@ -190,7 +190,7 @@ chrome.webNavigation.onCompleted.addListener(async (details) => {
  * This ensures the icon is updated instantly when switching to a tab that has already been scanned.
  */
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
-  if (!(await isScanningGloballyEnabled())) return;
+  if (!(await isScanningGloballyEnabled() && await isPassiveScanningEnabled())) return;
 
   triggerPassiveScan(activeInfo.tabId);
 });
@@ -199,7 +199,7 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
  * Listens for client-side navigations in Single Page Applications (e.g., React, Angular).
  */
 chrome.webNavigation.onHistoryStateUpdated.addListener(async (details) => {
-  if (!(await isScanningGloballyEnabled())) return;
+  if (!(await isScanningGloballyEnabled() && await isPassiveScanningEnabled())) return;
 
   if (!details || !(await isScannable(details.url))) {
     return;

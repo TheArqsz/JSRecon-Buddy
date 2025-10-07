@@ -62,12 +62,14 @@ export function saveOptions() {
   }
 
   const showTitleNotification = !document.getElementById('disable-title-notification').checked;
+  const passiveScanningDisabled = document.getElementById('disable-passive-scanning').checked;
 
   const excludedRuleCheckboxes = document.querySelectorAll('#rules-list-container input[type="checkbox"]:checked');
   const excludedRuleIds = Array.from(excludedRuleCheckboxes).map(cb => cb.value);
 
   chrome.storage.sync.set({
     showTitleNotification: showTitleNotification,
+    isPassiveScanningEnabled: !passiveScanningDisabled,
     excludedDomains: excludedDomains,
     excludedRuleIds: excludedRuleIds
   }, () => {
@@ -88,10 +90,12 @@ export function saveOptions() {
 export function restoreOptions() {
   chrome.storage.sync.get({
     showTitleNotification: true,
+    isPassiveScanningEnabled: true,
     excludedDomains: '',
     excludedRuleIds: []
   }, (items) => {
     document.getElementById('disable-title-notification').checked = !items.showTitleNotification;
+    document.getElementById('disable-passive-scanning').checked = !items.isPassiveScanningEnabled;
     document.getElementById('excluded-domains').value = items.excludedDomains;
     populateRulesList(items.excludedRuleIds);
   });

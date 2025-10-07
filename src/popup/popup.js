@@ -143,8 +143,9 @@ export function storageChangeListener(changes, areaName) {
 }
 
 /**
- * Asynchronously fetches passive scan data from `chrome.storage.local` and
- * triggers the rendering of the findings list or status messages.
+ * Asynchronously fetches passive scan data from `chrome.storage.local` and the passive scanning setting
+ * from `chrome.storage.sync`, then triggers the rendering of the popup content.
+ * @async
  * @param {chrome.tabs.Tab} tab - The active tab object to load data for.
  * @param {boolean} [isScannable=true] - A flag indicating if the page can be scanned.
  * @returns {Promise<void>}
@@ -157,12 +158,18 @@ export async function loadAndRenderSecrets(tab, isScannable = true) {
 
   findingsList.innerHTML = '<div class="no-findings"><span>Loading findings...</span></div>';
 
-  chrome.storage.local.get(pageKey).then(data => {
-    renderContent(data[pageKey], findingsList, isScannable);
-  }).catch(error => {
-    console.warn("[JS Recon Buddy] Error fetching local data:", error);
+  try {
+    const [localData, syncSettings] = await Promise.all([
+      chrome.storage.local.get(pageKey),
+      chrome.storage.sync.get({ isPassiveScanningEnabled: true })
+    ]);
+
+    renderContent(localData[pageKey], findingsList, isScannable, syncSettings.isPassiveScanningEnabled);
+
+  } catch (error) {
+    console.warn("[JS Recon Buddy] Error fetching data:", error);
     findingsList.innerHTML = '<div class="no-findings"><span>Error loading findings.</span></div>';
-  });
+  }
 }
 
 /**
@@ -173,8 +180,9 @@ export async function loadAndRenderSecrets(tab, isScannable = true) {
  * may contain `{status: string, results: Array<object>}`.
  * @param {HTMLElement} findingsList - The DOM element to render the content into.
  * @param {boolean} [isScannable=true] - A flag indicating if the page can be scanned.
+ * @param {boolean} [isPassiveScanningEnabled=true] - A flag indicating if passive scanning is currently enabled.
  */
-export function renderContent(storedData, findingsList, isScannable = true) {
+export function renderContent(storedData, findingsList, isScannable = true, isPassiveScanningEnabled = true) {
   findingsList.innerHTML = '';
   const rescanButton = document.getElementById('rescan-passive-btn');
   const findingsCountSpan = document.getElementById('findings-count');
@@ -185,7 +193,13 @@ export function renderContent(storedData, findingsList, isScannable = true) {
   }
 
   if (!storedData || !storedData.status) {
-    findingsList.innerHTML = `
+    if (!isPassiveScanningEnabled) {
+      findingsList.innerHTML = `
+                <div class="no-findings">
+                    <span>Passive secret scanning is disabled in settings.</span>
+                </div>`;
+    } else {
+      findingsList.innerHTML = `
 		<div class="no-findings">
 			This page needs to be reloaded.
 			<button id="reload-btn" class="btn-icon">
@@ -194,11 +208,12 @@ export function renderContent(storedData, findingsList, isScannable = true) {
 			</svg>
 			</button>
 		</div>`;
-    const reloadBtn = document.getElementById('reload-btn');
-    if (reloadBtn) {
-      reloadBtn.addEventListener('click', () => {
-        chrome.tabs.reload(activeTabId);
-      });
+      const reloadBtn = document.getElementById('reload-btn');
+      if (reloadBtn) {
+        reloadBtn.addEventListener('click', () => {
+          chrome.tabs.reload(activeTabId);
+        });
+      }
     }
     return;
   }

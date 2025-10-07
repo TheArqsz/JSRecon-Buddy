@@ -123,3 +123,14 @@ export async function isScanningGloballyEnabled() {
   const { isScanningEnabled } = await chrome.storage.sync.get({ isScanningEnabled: true });
   return isScanningEnabled;
 }
+
+/**
+ * Checks if passive scanning is enabled by the user.
+ * The setting is retrieved from `chrome.storage.sync` and defaults to true.
+ * @async
+ * @returns {Promise<boolean>} A promise that resolves to `true` if passive scanning is enabled, otherwise `false`.
+ */
+export async function isPassiveScanningEnabled() {
+  const { isPassiveScanningEnabled } = await chrome.storage.sync.get({ isPassiveScanningEnabled: true });
+  return isPassiveScanningEnabled;
+}

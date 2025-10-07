@@ -229,107 +229,93 @@ chrome.tabs.onRemoved.addListener((tabId) => {
  * on-demand scan or fetching external scripts for a content script.
  */
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  (async () => {
-    try {
-      if (request.type === "SCAN_PAGE" || request.type === 'FORCE_PASSIVE_RESCAN') {
-        if (!(await isScanningGloballyEnabled())) {
-          if (sendResponse) sendResponse({ status: "disabled" });
-          return True;
-        }
-      }
-
-      if (request.type === "SCAN_PAGE") {
-        const targetTabId = request.tabId;
-        chrome.scripting.insertCSS({
-          target: { tabId: targetTabId },
-          files: ["src/overlay/overlay.css"],
-        });
-        chrome.scripting.executeScript({
-          target: { tabId: targetTabId },
-          files: ["src/overlay/overlay.js"],
-        });
-        sendResponse({ status: "ok" });
-        return True;
-      }
-
-      if (request.type === "FETCH_SCRIPTS") {
-        const fetchPromises = request.urls.map((url) =>
-          fetch(url)
-            .then((res) => (res.ok ? res.text() : Promise.reject()))
-            .then((code) => ({ source: url, code }))
-            .catch(() => null),
-        );
-        Promise.all(fetchPromises).then((results) => sendResponse(results));
-        return true;
-      }
-
-      if (request.type === 'FORCE_PASSIVE_RESCAN') {
-        const { tabId } = request;
-        for (const key of scannedPages.keys()) {
-          if (key.startsWith(`${tabId}|`)) {
-            scannedPages.delete(key);
-          }
-        }
-        triggerPassiveScan(tabId, true);
+  if (request.type === "SCAN_PAGE") {
+    (async () => {
+      if (!(await isScanningGloballyEnabled())) {
+        sendResponse({ status: "disabled" });
         return;
       }
-
-      if (request.type === 'FETCH_FROM_CONTENT_SCRIPT') {
-        fetch(request.url)
-          .then(response => {
-            if (response && response.status === 404) {
-              return { status: 'not_found' };
-            }
-            if (!response.ok) {
-              throw new Error(`Fetch error - HTTP status ${response.status}`);
-            }
-            return response.json();
+      try {
+        const targetTabId = request.tabId;
+        await Promise.all([
+          chrome.scripting.insertCSS({
+            target: { tabId: targetTabId },
+            files: ["src/overlay/overlay.css"],
+          }),
+          chrome.scripting.executeScript({
+            target: { tabId: targetTabId },
+            files: ["src/overlay/overlay.js"],
           })
-          .then(json => sendResponse(json))
-          .catch(error => {
-            console.warn(`[JS Recon Buddy] Error fetching the content for URL ${request.url}:`, error);
-            sendResponse({ status: 'error', message: error.message });
-          });
-
-        return true;
+        ]);
+        sendResponse({ status: "ok" });
+      } catch (error) {
+        console.error(`Failed to inject scripts into tab ${request.tabId}:`, error);
+        sendResponse({ status: "error", message: error.message });
       }
+    })();
+    return true;
+  }
 
-      if (request.type === 'CLEAR_STALE_CACHE') {
-        if (typeof request.cacheKeyPrefix === 'string' && typeof request.maxCacheAge === 'number') {
-          clearStaleLocalCache(request.cacheKeyPrefix, request.maxCacheAge);
+  if (request.type === 'FORCE_PASSIVE_RESCAN') {
+    (async () => {
+      if (!(await isScanningGloballyEnabled())) { return; }
+      const { tabId } = request;
+      for (const key of scannedPages.keys()) {
+        if (key.startsWith(`${tabId}|`)) {
+          scannedPages.delete(key);
+        }
+      }
+      triggerPassiveScan(tabId, true);
+    })();
+  }
+
+  if (request.type === 'SCANNING_STATE_CHANGED') {
+    (async () => {
+      const tabs = await chrome.tabs.query({});
+      for (const tab of tabs) {
+        if (request.isEnabled) {
+          triggerPassiveScan(tab.id);
         } else {
-          console.warn('[JS Recon Buddy] CLEAR_STALE_CACHE message received without a valid maxCacheAge.');
+          await setDisabledIconForTab(tab.id);
         }
       }
+    })();
+  }
 
-      if (request.type === 'GET_HEADER_DATA') {
-        const tabUrl = request.url;
-        chrome.storage.session.get(`header_analysis_${tabUrl}`).then(data => {
-          sendResponse(data[`header_analysis_${tabUrl}`].results || []);
-        });
-        return true;
-      }
+  if (request.type === "FETCH_SCRIPTS") {
+    const fetchPromises = request.urls.map(url =>
+      fetch(url)
+        .then(res => (res.ok ? res.text() : Promise.reject()))
+        .then(code => ({ source: url, code }))
+        .catch(() => null)
+    );
+    Promise.all(fetchPromises).then(results => sendResponse(results));
+    return true;
+  }
 
-      if (request.type === 'SCANNING_STATE_CHANGED') {
-        const tabs = await chrome.tabs.query({});
-        for (const tab of tabs) {
-          if (request.isEnabled) {
-            triggerPassiveScan(tab.id);
-          } else {
-            await setDisabledIconForTab(tab.id);
-          }
-        }
-      }
-    } catch (error) {
-      if (error.message.includes('No tab with id')) return;
-      console.warn(`[JS Recon Buddy] Error in onMessage listener:`, error);
+  if (request.type === 'FETCH_FROM_CONTENT_SCRIPT') {
+    fetch(request.url)
+      .then(response => {
+        if (!response.ok) { throw new Error(`HTTP status ${response.status}`); }
+        return response.json();
+      })
+      .then(json => sendResponse(json))
+      .catch(error => sendResponse({ status: 'error', message: error.message }));
+    return true;
+  }
+
+  if (request.type === 'GET_HEADER_DATA') {
+    chrome.storage.session.get(`header_analysis_${request.url}`).then(data => {
+      sendResponse(data[`header_analysis_${request.url}`]?.results || []);
+    });
+    return true;
+  }
+
+  if (request.type === 'CLEAR_STALE_CACHE') {
+    if (typeof request.cacheKeyPrefix === 'string' && typeof request.maxCacheAge === 'number') {
+      clearStaleLocalCache(request.cacheKeyPrefix, request.maxCacheAge);
     }
-  })();
-  return (
-    request.type === "FETCH_SCRIPTS" ||
-    request.type === "FETCH_FROM_CONTENT_SCRIPT" ||
-    request.type === "GET_HEADER_DATA"
-  );
+  }
 });
 
 /**

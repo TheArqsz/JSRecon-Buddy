@@ -1,3 +1,10 @@
+## [1.12.0](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.11.1...v1.12.0) (2025-10-07)
+
+
+### Features
+
+* Added disable passive scanning checkbox to options page. ([5ade191](https://github.com/TheArqsz/JSRecon-Buddy/commit/5ade19169c5b9c5fc2454ab824328cfdf0db6ecc))
+
 ## [1.11.1](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.11.0...v1.11.1) (2025-10-07)
 
 

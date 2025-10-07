@@ -6,7 +6,8 @@ import {
   getDOMAsText,
   isScannable,
   isUrlExcluded,
-  isScanningGloballyEnabled
+  isScanningGloballyEnabled,
+  isPassiveScanningEnabled
 } from '../../src/utils/coreUtils.js';
 
 import { initializePopup } from '../../src/popup/popup.js';
@@ -187,5 +188,45 @@ describe('isScanningGloballyEnabled', () => {
     chrome.storage.sync.get.mockRejectedValue(mockError);
 
     await expect(isScanningGloballyEnabled()).rejects.toThrow('Storage API is unavailable');
+  });
+});
+
+describe('isPassiveScanningEnabled', () => {
+  beforeEach(() => {
+    chrome.storage.sync.get.mockClear();
+  });
+
+  test('should return true when the setting in storage is explicitly true', async () => {
+    chrome.storage.sync.get.mockResolvedValue({ isPassiveScanningEnabled: true });
+
+    const result = await isPassiveScanningEnabled();
+
+    expect(result).toBe(true);
+    expect(chrome.storage.sync.get).toHaveBeenCalledWith({ isPassiveScanningEnabled: true });
+  });
+
+  test('should return false when the setting in storage is explicitly false', async () => {
+    chrome.storage.sync.get.mockResolvedValue({ isPassiveScanningEnabled: false });
+
+    const result = await isPassiveScanningEnabled();
+
+    expect(result).toBe(false);
+    expect(chrome.storage.sync.get).toHaveBeenCalledWith({ isPassiveScanningEnabled: true });
+  });
+
+  test('should return true when the setting is not present in storage (default case)', async () => {
+    chrome.storage.sync.get.mockImplementation(defaults => Promise.resolve(defaults));
+
+    const result = await isPassiveScanningEnabled();
+
+    expect(result).toBe(true);
+    expect(chrome.storage.sync.get).toHaveBeenCalledWith({ isPassiveScanningEnabled: true });
+  });
+
+  test('should handle storage API errors gracefully', async () => {
+    const mockError = new Error('Storage API is unavailable');
+    chrome.storage.sync.get.mockRejectedValue(mockError);
+
+    await expect(isPassiveScanningEnabled()).rejects.toThrow('Storage API is unavailable');
   });
 });

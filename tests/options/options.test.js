@@ -19,6 +19,7 @@ describe('Options Page Logic', () => {
 
     document.body.innerHTML = `
       <input type="checkbox" id="disable-title-notification">
+      <input type="checkbox" id="disable-passive-scanning">
       <textarea id="excluded-domains"></textarea>
       <div id="validation-error"></div>
       <input id="rule-search">
@@ -36,6 +37,7 @@ describe('Options Page Logic', () => {
     chrome.storage.sync.get.mockImplementation((defaults, callback) => {
       callback({
         showTitleNotification: true,
+        isPassiveScanningEnabled: true,
         excludedDomains: '',
         excludedRuleIds: []
       });
@@ -46,6 +48,7 @@ describe('Options Page Logic', () => {
     test('should fetch settings from storage and populate the UI', () => {
       const mockSettings = {
         showTitleNotification: false,
+        isPassiveScanningEnabled: false,
         excludedDomains: 'google.com\n/github\\.com/',
         excludedRuleIds: ['aws-key']
       };
@@ -57,6 +60,8 @@ describe('Options Page Logic', () => {
 
       expect(chrome.storage.sync.get).toHaveBeenCalled();
       expect(document.getElementById('disable-title-notification').checked).toBe(true);
+      expect(document.getElementById('disable-passive-scanning').checked).toBe(true);
+
       expect(document.getElementById('excluded-domains').value).toBe(mockSettings.excludedDomains);
 
       const awsCheckbox = document.getElementById('rule-aws-key');
@@ -72,6 +77,7 @@ describe('Options Page Logic', () => {
       document.getElementById('rule-google-api').checked = true;
       document.getElementById('rule-slack-token').checked = true;
       document.getElementById('disable-title-notification').checked = false;
+      document.getElementById('disable-passive-scanning').checked = false;
       document.getElementById('excluded-domains').value = 'youtube.com\n/valid-regex/';
 
       saveOptions();
@@ -79,6 +85,7 @@ describe('Options Page Logic', () => {
       expect(chrome.storage.sync.set).toHaveBeenCalledWith(
         {
           showTitleNotification: true,
+          isPassiveScanningEnabled: true,
           excludedDomains: 'youtube.com\n/valid-regex/',
           excludedRuleIds: ['google-api', 'slack-token']
         },
@@ -105,6 +112,17 @@ describe('Options Page Logic', () => {
 
       expect(chrome.storage.sync.set).toHaveBeenCalledWith(
         expect.objectContaining({ showTitleNotification: false }),
+        expect.any(Function)
+      );
+    });
+
+    test('should correctly save the state of the passive scanning checkbox', () => {
+      document.getElementById('disable-passive-scanning').checked = true;
+
+      saveOptions();
+
+      expect(chrome.storage.sync.set).toHaveBeenCalledWith(
+        expect.objectContaining({ isPassiveScanningEnabled: false }),
         expect.any(Function)
       );
     });

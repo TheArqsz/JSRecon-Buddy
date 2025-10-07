@@ -305,7 +305,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       console.warn(`[JS Recon Buddy] Error in onMessage listener:`, error);
     }
   })();
-  return true;
+  return (
+    request.type === "FETCH_SCRIPTS" ||
+    request.type === "FETCH_FROM_CONTENT_SCRIPT" ||
+    request.type === "GET_HEADER_DATA"
+  );
 });
 
 /**

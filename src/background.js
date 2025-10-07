@@ -609,7 +609,10 @@ async function runPassiveScan(pageData, tabId, pageKey) {
       return { source: s.source, content: s.content, isTooLarge: isTooLarge };
     });
 
-  const serializableRules = secretRules.map(rule => ({
+  const { excludedRuleIds } = await chrome.storage.sync.get({ excludedRuleIds: [] });
+  const activeRules = secretRules.filter(rule => !excludedRuleIds.includes(rule.id));
+
+  const serializableRules = activeRules.map(rule => ({
     ...rule,
     regex: {
       source: rule.regex.source,

@@ -1,3 +1,10 @@
+## [1.12.1](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.12.0...v1.12.1) (2025-10-07)
+
+
+### Bug Fixes
+
+* This commit implements fix for wrong handling of async events in the background.js ([a46b8d4](https://github.com/TheArqsz/JSRecon-Buddy/commit/a46b8d4798f5d9631ccfafc16aaedae4e5c682a4))
+
 ## [1.12.0](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.11.1...v1.12.0) (2025-10-07)
 
 

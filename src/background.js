@@ -49,6 +49,25 @@ let activeFetches = 0;
 const MAX_CONCURRENT_FETCHES = 3;
 
 /**
+ * @description The maximum number of full-page scans allowed to run concurrently.
+ * @type {number}
+ */
+const MAX_CONCURRENT_SCANS = 7
+
+/**
+ * @description A counter for currently active full-page scans.
+ * @type {number}
+ */
+let activeScans = 0;
+
+/**
+ * @description A queue to hold pending scan requests. Each item is the tabId
+ * that needs to be scanned.
+ * @type {Array<{tabId: number, force: boolean}>}
+ */
+const scanQueue = [];
+
+/**
  * Checks which browser the extension is running in.
  * @returns {Promise<'firefox'|'chrome'>}
  */
@@ -215,7 +234,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       if (request.type === "SCAN_PAGE" || request.type === 'FORCE_PASSIVE_RESCAN') {
         if (!(await isScanningGloballyEnabled())) {
           if (sendResponse) sendResponse({ status: "disabled" });
-          return;
+          return True;
         }
       }
 
@@ -230,6 +249,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           files: ["src/overlay/overlay.js"],
         });
         sendResponse({ status: "ok" });
+        return True;
       }
 
       if (request.type === "FETCH_SCRIPTS") {
@@ -442,6 +462,13 @@ async function triggerPassiveScan(tabId, force = false) {
       return;
     }
 
+    if (!scanQueue.some(item => item.tabId === tabId)) {
+      scanQueue.push({ tabId, force });
+    }
+
+    processScanQueue();
+
+
     const pageKey = `${tab.id}|${tab.url}`;
     if (scannedPages.has(pageKey) && !force) {
       const cachedScan = scannedPages.get(pageKey);
@@ -500,6 +527,98 @@ async function triggerPassiveScan(tabId, force = false) {
       return;
     }
     console.error(`[JS Recon Buddy] Error triggering scan on tab ${tabId}:`, error);
+  }
+}
+
+/**
+ * Processes the scan queue, ensuring the number of active scans
+ * does not exceed MAX_CONCURRENT_SCANS.
+ */
+async function processScanQueue() {
+  if (activeScans >= MAX_CONCURRENT_SCANS || scanQueue.length === 0) {
+    return;
+  }
+
+  activeScans++;
+  const { tabId, force } = scanQueue.shift();
+
+  try {
+    if (scansInProgress.has(tabId) && !force) {
+      activeScans--;
+      processScanQueue();
+      return;
+    }
+
+    const tab = await chrome.tabs.get(tabId);
+    if (!tab || !(await isScannable(tab.url))) {
+      activeScans--;
+      processScanQueue();
+      return;
+    }
+
+    const pageKey = `${tab.id}|${tab.url}`;
+    if (scannedPages.has(pageKey) && !force) {
+      const cachedScan = scannedPages.get(pageKey);
+      await updateActionUI(tab.id, cachedScan.findingsCount);
+      activeScans--;
+      processScanQueue();
+      return;
+    }
+
+    const dataWrapper = await chrome.storage.local.get(pageKey);
+    const storedData = dataWrapper[pageKey];
+
+    if (storedData && storedData.status === 'complete' && !force) {
+      const findingsCount = storedData.results ? storedData.results.length : 0;
+      if (findingsCount == 0) {
+        storedData.contentMap = {};
+        try {
+          await chrome.storage.local.set({ [pageKey]: storedData });
+        } catch (error) { }
+      }
+      await updateActionUI(tab.id, findingsCount);
+      scannedPages.set(pageKey, { findingsCount });
+      activeScans--;
+      processScanQueue();
+      return;
+    }
+
+    const scanPromise = (async () => {
+      await setIconAndState(tabId, 'scanning');
+
+      const injectionResults = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: scrapePageContent,
+      });
+
+      if (injectionResults && injectionResults[0] && injectionResults[0].result) {
+        await runPassiveScan(injectionResults[0].result, tab.id, pageKey);
+      } else {
+        await setIconAndState(tabId, 'idle');
+      }
+    })();
+
+    scansInProgress.set(tabId, scanPromise);
+
+    scanPromise.catch(error => {
+      if (error?.message?.includes('Missing host permission for the tab')) {
+        console.warn(`[JS Recon Buddy] Firefox's error for tab ${tabId} was thrown`, error);
+      } else if (error?.message && !error.message.includes('No tab with id')) {
+        console.warn(`[JS Recon Buddy] An unexpected error occurred during the scan for tab ${tabId}:`, error);
+      }
+    }).finally(() => {
+      scansInProgress.delete(tabId);
+      activeScans--;
+      processScanQueue();
+    });
+  } catch (error) {
+    scansInProgress.delete(tabId);
+    activeScans--;
+    processScanQueue();
+    if (error.message.includes('No tab with id')) {
+      return;
+    }
+    console.error(`[JS Recon Buddy] Error processing scan for tab ${tabId}:`, error);
   }
 }
 

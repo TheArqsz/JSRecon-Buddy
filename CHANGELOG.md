@@ -1,3 +1,10 @@
+## [1.11.1](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.11.0...v1.11.1) (2025-10-07)
+
+
+### Bug Fixes
+
+* This commit adds max concurrent passive scans. ([066edce](https://github.com/TheArqsz/JSRecon-Buddy/commit/066edce6416ed042350dedc5e389e3911c007cef)), closes [#5](https://github.com/TheArqsz/JSRecon-Buddy/issues/5)
+
 ## [1.11.0](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.10.0...v1.11.0) (2025-10-07)
 
 

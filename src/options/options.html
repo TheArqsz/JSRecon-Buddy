@@ -16,10 +16,10 @@
 
         <div class="form-group">
             <div class="label-with-tooltip">
-                <label for="disable-title-notification">
+                <legend for="disable-title-notification">
                     <input type="checkbox" id="disable-title-notification">
                     Disable tab title notifications
-                </label>
+                </legend>
                 <span class="tooltip-icon"
                     title="Prevents the extension from adding '[JSRB (x)]' to the beginning of the page title when findings are discovered.">?</span>
             </div>
@@ -27,12 +27,28 @@
 
         <div class="form-group">
             <div class="label-with-tooltip">
-                <label for="excluded-domains">Exclude Domains/Paths (one per line)</label>
+                <legend for="excluded-domains">Exclude Domains/Paths (one per line)</legend>
                 <span class="tooltip-icon"
                     title="Use /your-regex/ for regular expressions. Otherwise, it's a simple text match.">?</span>
             </div>
             <textarea id="excluded-domains" rows="5" placeholder="example.com&#10;/google\.com\/maps/"></textarea>
             <div id="validation-error" class="error-message"></div>
+        </div>
+
+        <div class="form-group">
+            <fieldset>
+                <div class="label-with-tooltip">
+                    <legend>Exclude Secret Rules</legend>
+                    <span class="tooltip-icon"
+                        title="Check a rule to prevent it from being used in passive scans. Use the search box to quickly find a specific rule.">?</span>
+                </div>
+                <input type="search" id="rule-search" class="search-input" placeholder="Search rules by ID...">
+                <div id="rules-list-container">
+                    <div id="no-rules-found" class="empty-state-message" style="display: none;">
+                        No rules found.
+                    </div>
+                </div>
+            </fieldset>
         </div>
 
         <div class="button-container">

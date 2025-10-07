@@ -1,3 +1,16 @@
+## [1.11.0](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.10.0...v1.11.0) (2025-10-07)
+
+
+### Features
+
+* Added exclude secret rules to the options page and a basic logic ([d23da24](https://github.com/TheArqsz/JSRecon-Buddy/commit/d23da2471ea8f9d5395dc6c880e0c36d76e93384))
+* **exclude_rules:** Implement exclude rules in passive scanning ([8e64e1d](https://github.com/TheArqsz/JSRecon-Buddy/commit/8e64e1d3b0fd65f4a00b5c75d9d8d184953fffdb))
+
+
+### Bug Fixes
+
+* Fixed onMessage listener always returning True indicating async ([4886879](https://github.com/TheArqsz/JSRecon-Buddy/commit/4886879975bc01283b2bd471e3736199485cca5c))
+
 ## [1.10.0](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.9.3...v1.10.0) (2025-10-01)
 
 

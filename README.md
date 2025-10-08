@@ -68,10 +68,15 @@ The scanner uses a set of regex patterns to identify and categorize potential se
 | **`write`** | HTML/DOM | `document.write("Welcome " + new URLSearchParams(location.search).get('name'));`|
 | **`writeln`** | HTML/DOM | `document.writeln(new URLSearchParams(location.search).get('line'));` |
 
+- Potential Dependency Confusion - (**opt-in**) identifies private NPM packages that are not on the public registry, flagging a potential dependency confusion attack vector.
+
+    > You can test this feature by cloning this repository, opening the `assets/dependency-confusion-test/index.html` file in your browser, and running an on-demand scan.
+
 - Interesting Parameters - flags potentially vulnerable URL parameters (e.g., redirect, debug, url).
 - Source Maps - finds links to source maps which can expose original source code.
 > If it is a valid source map, the extension tries to deconstruct source files based on data there
 - JS Libraries - lists identified JavaScript libraries and their versions.
+- External and Inline Scripts - provides a complete inventory of all JavaScript sources loaded by the page, allowing you to view the content of any script in a formatted viewer.
 
 
 
@@ -152,7 +157,7 @@ This approach was chosen to avoid maintaining two separate versions of the exten
 
 ### Chromium-based browser
 
-While I strongly advice for this extension to be loaded as an unpacked extension in developer mode, it can be installed [directly from the Chrome Web Store](https://chromewebstore.google.com/detail/emihdlmaomlajmkaanockgjhojehafnp). 
+While I strongly advice for this extension to be loaded as an unpacked extension in developer mode, it can be installed [directly from the Chrome Web Store](https://chromewebstore.google.com/detail/emihdlmaomlajmkaanockgjhojehafnp).
 
 However, if you decide to do it manually, here are the steps:
 
@@ -174,7 +179,11 @@ You can find my extension [here in the official Add-on Store](https://addons.moz
 
 ## How to use?
 
-### Main usage
+### Master On/Off Toggle
+
+A master `On/Off` switch is available in the top-right corner of the popup. When turned off, the extension will completely suspend all scanning functions (both passive and on-demand) until it is turned back on.
+
+### Main usage (on-demand scan)
 
 1. Navigate to the target website.
 2. Click the extension icon in your browser's toolbar.
@@ -238,10 +247,17 @@ You can customize the extension's behavior by opening the settings page. Access 
 
 - Disable tab title notifications - by default, the extension adds a `[JSRB (x)]` prefix to the page title when findings are discovered. Check this box to turn off this feature for a cleaner look.
 
+- Disable passive background scanning - prevents the extension from automatically scanning pages on load. This does not affect the on-demand "Analyze Full Page" scan.
+
+- Enable NPM Dependency Scanning - an opt-in feature for the on-demand scan. When enabled, the scanner will check for private NPM packages that could be vulnerable to dependency confusion.
+    > **WARNING**: This makes requests to a public NPM registry.
+
 - Exclude Domains/Paths - this feature allows you to prevent the extension from scanning specific websites. You can add one entry per line:
 
     - Simple Match - entering `example.com` will prevent scans on any URL containing that string.
     - Regular Expression - for more complex rules, you can use regular expressions by enclosing the pattern in slashes, like `/google\.com\/maps/`.
+
+- Exclude Secret Rules - a searchable list that allows you to disable specific secret-finding rules. This is useful for reducing noise from patterns that are not relevant to your current target.
 
 When a page is excluded from scanning, the extension icon will remain unchanged, and no analysis will be performed, as shown below for `example.com`.
 

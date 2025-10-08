@@ -299,6 +299,12 @@
     transform: rotate(90deg);
 }
 
+.scanner details>ul>li:has(a.script-link)::before {
+    content: '> ';
+    font-weight: bold;
+    margin-right: 5px;
+}
+
 #context-modal {
     position: fixed;
     z-index: var(--z-index-overlay);

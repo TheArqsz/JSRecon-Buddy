@@ -43,7 +43,21 @@ export function getPatterns(parameters) {
           : null,
       group: 1,
       context: "snippet",
-    }
+    },
+    "Potential NPM Packages": [
+      {
+        // Finds scoped package names in "name" fields, like in a package.json
+        regex: /"name":\s*"(@[a-z0-9-~][a-z0-9-._~]*\/[a-z0-9-~][a-z0-9-._~]*)"/g,
+        group: 1,
+        context: "line",
+      },
+      {
+        // Finds scoped package names in import/require statements
+        regex: /(?:from|require\()\s*['"](@[a-z0-9-~][a-z0-9-._~]*\/[a-z0-9-~][a-z0-9-._~]*)['"]/g,
+        group: 1,
+        context: "line",
+      },
+    ],
   };
   for (const rule of secretRules) {
     if (!patterns["Potential Secrets"]) {

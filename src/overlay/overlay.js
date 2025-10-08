@@ -135,8 +135,9 @@
       };
 
       setTimeout(async () => {
-        const { parameters } = await chrome.storage.sync.get({
+        const { parameters, isNPMDependencyScanEnabled } = await chrome.storage.sync.get({
           parameters: DEFAULT_PARAMETERS,
+          isNPMDependencyScanEnabled: false
         });
 
         const PATTERNS = getPatterns(parameters);
@@ -147,6 +148,27 @@
           { shannonEntropy, getLineAndColumn },
           onProgressCallback
         );
+
+        const potentialPackagesMap = results['Potential NPM Packages'];
+        if (isNPMDependencyScanEnabled && potentialPackagesMap?.size > 0) {
+          progressText.textContent = `Verifying ${potentialPackagesMap.size} NPM packages...`;
+          const unverifiedPackages = Array.from(potentialPackagesMap.keys());
+          const vulnerablePackageNames = await chrome.runtime.sendMessage({
+            type: 'VERIFY_NPM_PACKAGES',
+            packages: unverifiedPackages
+          });
+          if (vulnerablePackageNames && vulnerablePackageNames.length > 0) {
+            const vulnerableSet = new Set(vulnerablePackageNames);
+            const dependencyMap = new Map();
+            for (const [pkg, occurrences] of potentialPackagesMap.entries()) {
+              if (vulnerableSet.has(pkg)) {
+                dependencyMap.set(pkg, occurrences);
+              }
+            }
+            results['Dependency Confusion'] = dependencyMap;
+          }
+        }
+        delete results['Potential NPM Packages'];
 
         const key = getCacheKey(CACHE_KEY_PREFIX, window.location.href);
         await setCachedResults(
@@ -309,6 +331,12 @@
           </code>
           `;
           },
+          copySelector: ".finding-details > summary code",
+        },
+        {
+          key: "Dependency Confusion",
+          title: "[!] Potential Dependency Confusion",
+          formatter: (packageName) => `This private package is not on npmjs.com: <code>${escapeHTML(packageName)}</code>`,
           copySelector: ".finding-details > summary code",
         },
         {

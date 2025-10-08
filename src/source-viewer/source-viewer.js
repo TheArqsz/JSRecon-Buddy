@@ -54,7 +54,7 @@ export async function initializeViewer() {
 
     const { content, secret, source } = storageData[storageKey];
 
-    if (content && secret) {
+    if (content) {
       const language = getLanguageFromSource(source);
       const escapedSecret = escapeHTML(secret);
       const updatedContent = content.replace(
@@ -66,27 +66,29 @@ export async function initializeViewer() {
 
       setTimeout(() => {
         Prism.highlightElement(codeEl, false, function () {
-          const xpath = `//text()[contains(., ${JSON.stringify(secret)})]`;
-          const result = document.evaluate(xpath, codeEl, null, XPathResult.ORDERED_NODE_ITERATOR_TYPE, null);
+          if (secret) {
+            const xpath = `//text()[contains(., ${JSON.stringify(secret)})]`;
+            const result = document.evaluate(xpath, codeEl, null, XPathResult.ORDERED_NODE_ITERATOR_TYPE, null);
 
-          let currentNode = result.iterateNext();
-          if (currentNode) {
-            const startIndex = currentNode.textContent.indexOf(secret);
-            if (startIndex > -1) {
-              const range = document.createRange();
-              range.setStart(currentNode, startIndex);
-              range.setEnd(currentNode, startIndex + secret.length);
+            let currentNode = result.iterateNext();
+            if (currentNode) {
+              const startIndex = currentNode.textContent.indexOf(secret);
+              if (startIndex > -1) {
+                const range = document.createRange();
+                range.setStart(currentNode, startIndex);
+                range.setEnd(currentNode, startIndex + secret.length);
 
-              const tempHighlight = document.createElement('span');
-              tempHighlight.className = 'highlight';
-              range.surroundContents(tempHighlight);
+                const tempHighlight = document.createElement('span');
+                tempHighlight.className = 'highlight';
+                range.surroundContents(tempHighlight);
 
-              if (tempHighlight.scrollIntoView) {
-                tempHighlight.scrollIntoView({
-                  behavior: 'auto',
-                  block: 'center',
-                  inline: 'center'
-                });
+                if (tempHighlight.scrollIntoView) {
+                  tempHighlight.scrollIntoView({
+                    behavior: 'auto',
+                    block: 'center',
+                    inline: 'center'
+                  });
+                }
               }
             }
           }

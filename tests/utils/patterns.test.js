@@ -77,4 +77,30 @@ describe('getPatterns', () => {
     expect(potentialSecrets[1].regex.source).toBe('[aA][pP][iI]_?[kK][eE][yY]="([^"]+)"');
     expect(potentialSecrets[1].ruleEntropy).toBe(0);
   });
+
+  test('should include correct patterns for "Potential NPM Packages"', async () => {
+    jest.unstable_mockModule('../../src/utils/rules.js', () => ({
+      secretRules: []
+    }));
+    const { getPatterns } = await import('../../src/utils/patterns.js');
+
+    const patterns = getPatterns([]);
+    const npmPatterns = patterns['Potential NPM Packages'];
+
+    expect(npmPatterns).toBeDefined();
+    expect(Array.isArray(npmPatterns)).toBe(true);
+    expect(npmPatterns.length).toBe(2);
+
+    expect(npmPatterns[0].regex).toBeInstanceOf(RegExp);
+    expect(npmPatterns[0].regex.source).toBe(
+      '"name":\\s*"(@[a-z0-9-~][a-z0-9-._~]*\\/[a-z0-9-~][a-z0-9-._~]*)"'
+    );
+    expect(npmPatterns[0].group).toBe(1);
+
+    expect(npmPatterns[1].regex).toBeInstanceOf(RegExp);
+    expect(npmPatterns[1].regex.source).toBe(
+      '(?:from|require\\()\\s*[\'"](@[a-z0-9-~][a-z0-9-._~]*\\/[a-z0-9-~][a-z0-9-._~]*)[\'"]'
+    );
+    expect(npmPatterns[1].group).toBe(1);
+  });
 });

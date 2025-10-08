@@ -134,3 +134,17 @@ export async function isPassiveScanningEnabled() {
   const { isPassiveScanningEnabled } = await chrome.storage.sync.get({ isPassiveScanningEnabled: true });
   return isPassiveScanningEnabled;
 }
+
+/**
+ * Escapes HTML special characters in a string to prevent injection when rendering.
+ * @param {string} str - The string to escape.
+ * @returns {string} The HTML-safe string.
+ */
+export const escapeHTML = (str) => {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+};

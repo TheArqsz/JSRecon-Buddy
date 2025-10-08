@@ -38,6 +38,17 @@
 
         <div class="form-group">
             <div class="label-with-tooltip">
+                <legend for="enable-dependency-scan">
+                    <input type="checkbox" id="enable-dependency-scan">
+                    Enable NPM Dependency Scanning
+                </legend>
+                <span class="tooltip-icon"
+                    title="When enabled, the on-demand scan will check for private NPM packages that could be vulnerable to dependency confusion. WARNING: This connects to a public NPM registry!">?</span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <div class="label-with-tooltip">
                 <legend for="excluded-domains">Exclude Domains/Paths (one per line)</legend>
                 <span class="tooltip-icon"
                     title="Use /your-regex/ for regular expressions. Otherwise, it's a simple text match.">?</span>

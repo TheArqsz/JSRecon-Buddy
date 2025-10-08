@@ -20,6 +20,7 @@ describe('Options Page Logic', () => {
     document.body.innerHTML = `
       <input type="checkbox" id="disable-title-notification">
       <input type="checkbox" id="disable-passive-scanning">
+      <input type="checkbox" id="enable-dependency-scan">
       <textarea id="excluded-domains"></textarea>
       <div id="validation-error"></div>
       <input id="rule-search">
@@ -38,6 +39,7 @@ describe('Options Page Logic', () => {
       callback({
         showTitleNotification: true,
         isPassiveScanningEnabled: true,
+        isNPMDependencyScanEnabled: false,
         excludedDomains: '',
         excludedRuleIds: []
       });
@@ -49,6 +51,7 @@ describe('Options Page Logic', () => {
       const mockSettings = {
         showTitleNotification: false,
         isPassiveScanningEnabled: false,
+        isNPMDependencyScanEnabled: true,
         excludedDomains: 'google.com\n/github\\.com/',
         excludedRuleIds: ['aws-key']
       };
@@ -61,6 +64,7 @@ describe('Options Page Logic', () => {
       expect(chrome.storage.sync.get).toHaveBeenCalled();
       expect(document.getElementById('disable-title-notification').checked).toBe(true);
       expect(document.getElementById('disable-passive-scanning').checked).toBe(true);
+      expect(document.getElementById('enable-dependency-scan').checked).toBe(true);
 
       expect(document.getElementById('excluded-domains').value).toBe(mockSettings.excludedDomains);
 
@@ -78,6 +82,8 @@ describe('Options Page Logic', () => {
       document.getElementById('rule-slack-token').checked = true;
       document.getElementById('disable-title-notification').checked = false;
       document.getElementById('disable-passive-scanning').checked = false;
+      document.getElementById('enable-dependency-scan').checked = true;
+
       document.getElementById('excluded-domains').value = 'youtube.com\n/valid-regex/';
 
       saveOptions();
@@ -86,6 +92,7 @@ describe('Options Page Logic', () => {
         {
           showTitleNotification: true,
           isPassiveScanningEnabled: true,
+          isNPMDependencyScanEnabled: true,
           excludedDomains: 'youtube.com\n/valid-regex/',
           excludedRuleIds: ['google-api', 'slack-token']
         },
@@ -123,6 +130,17 @@ describe('Options Page Logic', () => {
 
       expect(chrome.storage.sync.set).toHaveBeenCalledWith(
         expect.objectContaining({ isPassiveScanningEnabled: false }),
+        expect.any(Function)
+      );
+    });
+
+    test('should correctly save the state of the dependency scanning checkbox', () => {
+      document.getElementById('enable-dependency-scan').checked = true;
+
+      saveOptions();
+
+      expect(chrome.storage.sync.set).toHaveBeenCalledWith(
+        expect.objectContaining({ isNPMDependencyScanEnabled: true }),
         expect.any(Function)
       );
     });

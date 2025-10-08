@@ -1,3 +1,16 @@
+## [1.13.0](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.12.1...v1.13.0) (2025-10-08)
+
+
+### Features
+
+* Added Inline and External scripts to the overlay ([4dd15eb](https://github.com/TheArqsz/JSRecon-Buddy/commit/4dd15eb0a9dc6ce5fb7a2693cabb0531918e6005))
+* Added OPEN_VIEWER_TAB onMessage trigger to background.js to handle source-viewer ([ff2003a](https://github.com/TheArqsz/JSRecon-Buddy/commit/ff2003a7caa47a8e7074a53455584e84c28a59ae))
+
+
+### Bug Fixes
+
+* Allowed source-viewer to be used without secret ([3fbe93b](https://github.com/TheArqsz/JSRecon-Buddy/commit/3fbe93b6ef90d620f05b6a434df19be0742cc874))
+
 ## [1.12.1](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.12.0...v1.12.1) (2025-10-07)
 
 

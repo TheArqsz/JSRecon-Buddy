@@ -316,6 +316,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       clearStaleLocalCache(request.cacheKeyPrefix, request.maxCacheAge);
     }
   }
+
+  if (request.type === 'OPEN_VIEWER_TAB') {
+    const viewerUrl = chrome.runtime.getURL('src/source-viewer/source-viewer.html');
+    chrome.tabs.create({
+      url: `${viewerUrl}#${request.storageKey}`
+    });
+  }
 });
 
 /**

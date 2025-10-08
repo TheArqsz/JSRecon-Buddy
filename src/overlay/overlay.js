@@ -13,7 +13,7 @@
     const { getPatterns } = await import(
       chrome.runtime.getURL("src/utils/patterns.js")
     );
-    const { shannonEntropy, getLineAndColumn, getDOMAsText } = await import(
+    const { shannonEntropy, getLineAndColumn, getDOMAsText, escapeHTML } = await import(
       chrome.runtime.getURL("src/utils/coreUtils.js")
     );
     const {
@@ -256,6 +256,20 @@
         expButton.disabled = false;
       }
 
+      const externalScriptUrls = Object.keys(contentMap).filter(key =>
+        key !== 'Main HTML Document' && !key.startsWith('Inline Script')
+      );
+      if (externalScriptUrls.length > 0) {
+        const externalScriptsMap = new Map(externalScriptUrls.map(url => [url, []]));
+        results['External Scripts'] = externalScriptsMap;
+      }
+
+      const inlineScriptKeys = Object.keys(contentMap).filter(key => key.startsWith('Inline Script'));
+      if (inlineScriptKeys.length > 0) {
+        const inlineScriptsMap = new Map(inlineScriptKeys.map(key => [key, []]));
+        results['Inline Scripts'] = inlineScriptsMap;
+      }
+
       const sectionConfig = [
         {
           key: "Subdomains",
@@ -332,6 +346,20 @@
           },
           copySelector: ".finding-details > summary > a",
         },
+        {
+          key: "External Scripts",
+          title: "[S] External Scripts",
+          formatter: (safeKey) => {
+            const absoluteUrl = new URL(safeKey, window.location.origin).href;
+            return `<a href="${absoluteUrl}" class="script-link" data-source-key="${safeKey}">${safeKey}</a>`
+          },
+          copySelector: "details > ul > li > a",
+        },
+        {
+          key: "Inline Scripts",
+          title: "[IS] Inline Scripts",
+          formatter: (safeKey) => `<a href="#" class="script-link" data-source-key="${safeKey}">${safeKey}</a>`,
+        }
       ];
       const sectionsHTML = sectionConfig
         .map(({ key, title, formatter, copySelector, copyModifier }) =>
@@ -366,10 +394,26 @@
       const resultsContainer = shadowRoot.querySelector(
         `.scanner-overlay__results`,
       );
-      resultsContainer.addEventListener("click", (event) => {
+      resultsContainer.addEventListener("click", async (event) => {
         const target = event.target;
 
-        if (target.classList.contains("clickable-source")) {
+        if (target.classList.contains("script-link")) {
+          event.preventDefault();
+
+          const sourceKey = target.dataset.sourceKey;
+          const scriptContent = contentMap[sourceKey];
+          if (!scriptContent) return;
+
+          const storageKey = `source-viewer-inline-${Date.now()}`;
+          const dataToStore = { content: scriptContent, source: sourceKey };
+          await chrome.storage.local.set({ [storageKey]: dataToStore });
+
+          chrome.runtime.sendMessage({
+            type: 'OPEN_VIEWER_TAB',
+            storageKey: storageKey
+          });
+          return;
+        } else if (target.classList.contains("clickable-source")) {
           const source = target.dataset.source;
           const index = parseInt(target.dataset.index, 10);
           const length = parseInt(target.dataset.length, 10);
@@ -691,6 +735,12 @@
           });
           itemsHTML += `</ul></details></div>`;
         }
+      } else if (title.includes("External Scripts") || title.includes("Inline Scripts")) {
+        findingsMap.forEach((_, item) => {
+          const safeItem = escapeHTML(item);
+          const renderedItem = formatter ? formatter(safeItem) : safeItem;
+          itemsHTML += `<li>${renderedItem}</li>`;
+        });
       } else {
         findingsMap.forEach((occurrences, item) => {
           itemsHTML += renderListItem(item, occurrences, formatter, contentMap);
@@ -702,9 +752,12 @@
         ? `data-copy-modifier="${copyModifier}"`
         : "";
 
+      const copyButtonHTML = (!title.includes("Inline Scripts"))
+        ? `<button class="btn btn--copy-section" data-copy-selector="${copySelector}" ${modifierAttribute}>Copy</button>`
+        : '';
       const summaryHTML = `
       <span>${title} (${findingsMap.size})</span>
-      <button class="btn btn--copy-section" data-copy-selector="${copySelector}" ${modifierAttribute}>Copy</button>
+      ${copyButtonHTML}
     `;
       return `<details><summary>${summaryHTML}</summary><ul>${itemsHTML}</ul></details>`;
     }
@@ -718,21 +771,6 @@
      * @returns {string} The HTML string for the list item.
      */
     function renderListItem(item, occurrences, formatter, contentMap) {
-
-      /**
-       * Escapes HTML special characters in a string to prevent injection when rendering.
-       * @param {string} str - The string to escape.
-       * @returns {string} The HTML-safe string.
-       */
-      const escapeHTML = (str) => {
-        return str
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-          .replace(/"/g, "&quot;")
-          .replace(/'/g, "&#039;");
-      };
-
       const safeItem = escapeHTML(item);
       const renderedItem = formatter
         ? formatter(safeItem, occurrences, item)

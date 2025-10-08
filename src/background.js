@@ -33,6 +33,12 @@ const removedTabs = new Set();
 const fetchQueue = [];
 
 /**
+ * @description A queue for throttled requests that need the full Response object.
+ * @type {Array<{url: string, resolve: Function}>}
+ */
+const fetchResponseQueue = [];
+
+/**
  * @description A counter for the number of currently active fetch requests.
  * This is used to ensure the number of concurrent requests does not exceed
  * `MAX_CONCURRENT_FETCHES`.
@@ -53,6 +59,14 @@ const MAX_CONCURRENT_FETCHES = 3;
  * @type {number}
  */
 const MAX_CONCURRENT_SCANS = 7
+
+/**
+ * @description The minimum delay in milliseconds between the completion of one
+ * fetch request queue and the start of the next. This acts as a rate limiter to
+ * prevent sending requests too quickly to a server.
+ * @type {number}
+ */
+const REQUEST_DELAY_MS = 200;
 
 /**
  * @description A counter for currently active full-page scans.
@@ -120,6 +134,18 @@ async function throttledFetch(url) {
 }
 
 /**
+ * A throttled fetch that resolves with the entire Response object.
+ * @param {string} url The URL to fetch.
+ * @returns {Promise<Response|null>} A promise that resolves with the Response object or null on network error.
+ */
+function throttledFetchResponse(url) {
+  return new Promise((resolve) => {
+    fetchResponseQueue.push({ url, resolve });
+    processFetchResponseQueue();
+  });
+}
+
+/**
  * Processes the fetch queue, ensuring the number of active fetches
  * does not exceed MAX_CONCURRENT_FETCHES.
  */
@@ -145,7 +171,34 @@ function processFetchQueue() {
     })
     .finally(() => {
       activeFetches--;
-      processFetchQueue();
+      setTimeout(() => {
+        processFetchQueue();
+      }, REQUEST_DELAY_MS);
+    });
+}
+
+/**
+ * Processes the response-based fetch queue.
+ */
+function processFetchResponseQueue() {
+  if (activeFetches >= MAX_CONCURRENT_FETCHES || fetchResponseQueue.length === 0) {
+    return;
+  }
+
+  activeFetches++;
+  const { url, resolve } = fetchResponseQueue.shift();
+
+  fetch(url)
+    .then(response => resolve(response))
+    .catch(err => {
+      console.warn(`[JS Recon Buddy] Fetch error for ${url}:`, err.message);
+      resolve(null);
+    })
+    .finally(() => {
+      activeFetches--;
+      setTimeout(() => {
+        processFetchResponseQueue();
+      }, REQUEST_DELAY_MS);
     });
 }
 
@@ -322,6 +375,26 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     chrome.tabs.create({
       url: `${viewerUrl}#${request.storageKey}`
     });
+  }
+
+  if (request.type === 'VERIFY_NPM_PACKAGES') {
+    (async () => {
+      const packageNames = request.packages;
+      const checkPromises = packageNames.map(async (name) => {
+        const response = await throttledFetchResponse(`https://registry.npmjs.org/${encodeURIComponent(name)}`);
+
+        if (response && response.status === 404) {
+          return name;
+        }
+        return null;
+      });
+
+      const results = await Promise.all(checkPromises);
+      const findings = results.filter(name => name !== null);
+
+      sendResponse(findings);
+    })();
+    return true;
   }
 });
 
@@ -599,6 +672,7 @@ async function processScanQueue() {
       } else if (error?.message && !error.message.includes('No tab with id')) {
         console.warn(`[JS Recon Buddy] An unexpected error occurred during the scan for tab ${tabId}:`, error);
       }
+      setIconAndState(tabId, 'idle');
     }).finally(() => {
       scansInProgress.delete(tabId);
       activeScans--;

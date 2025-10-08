@@ -1,3 +1,12 @@
+## [1.14.0](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.13.0...v1.14.0) (2025-10-08)
+
+
+### Features
+
+* Added message handler for dependency check in npm. Updated throttled fetch with a delay ([f07bea3](https://github.com/TheArqsz/JSRecon-Buddy/commit/f07bea37ff0f8d664a52454fdd5043baec0010f6))
+* **npm_dependency_scan:** Added entry in the overlay for dependency confusion ([8dcf0f2](https://github.com/TheArqsz/JSRecon-Buddy/commit/8dcf0f2dde3382896eff01103b11f02a96fd2edd))
+* **npm_dependency_scan:** Added new setting in the options page ([1e6c730](https://github.com/TheArqsz/JSRecon-Buddy/commit/1e6c730eb9aac1e13e99830ba24ab07dadb74fe4))
+
 ## [1.13.0](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.12.1...v1.13.0) (2025-10-08)
 
 

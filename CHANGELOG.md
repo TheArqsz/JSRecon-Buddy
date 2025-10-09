@@ -1,3 +1,10 @@
+## [1.14.1](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.14.0...v1.14.1) (2025-10-09)
+
+
+### Bug Fixes
+
+* Properly forced FETCH_SCRIPTS to use throttledFetch ([d8bb841](https://github.com/TheArqsz/JSRecon-Buddy/commit/d8bb841c241e036ef8ee6a6550ead8880b95d585))
+
 ## [1.14.0](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.13.0...v1.14.0) (2025-10-08)
 
 

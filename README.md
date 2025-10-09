@@ -74,7 +74,7 @@ The scanner uses a set of regex patterns to identify and categorize potential se
 
 - Interesting Parameters - flags potentially vulnerable URL parameters (e.g., redirect, debug, url).
 - Source Maps - finds links to source maps which can expose original source code.
-> If it is a valid source map, the extension tries to deconstruct source files based on data there
+	> If it is a valid source map, the extension tries to deconstruct source files based on data there
 - JS Libraries - lists identified JavaScript libraries and their versions.
 - External and Inline Scripts - provides a complete inventory of all JavaScript sources loaded by the page, allowing you to view the content of any script in a formatted viewer.
 
@@ -250,7 +250,9 @@ You can customize the extension's behavior by opening the settings page. Access 
 - Disable passive background scanning - prevents the extension from automatically scanning pages on load. This does not affect the on-demand "Analyze Full Page" scan.
 
 - Enable NPM Dependency Scanning - an opt-in feature for the on-demand scan. When enabled, the scanner will check for private NPM packages that could be vulnerable to dependency confusion.
-    > **WARNING**: This makes requests to a public NPM registry.
+
+> [!WARNING]
+> This makes requests to a public NPM registry.
 
 - Exclude Domains/Paths - this feature allows you to prevent the extension from scanning specific websites. You can add one entry per line:
 

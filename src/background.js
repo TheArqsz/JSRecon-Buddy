@@ -33,12 +33,6 @@ const removedTabs = new Set();
 const fetchQueue = [];
 
 /**
- * @description A queue for throttled requests that need the full Response object.
- * @type {Array<{url: string, resolve: Function}>}
- */
-const fetchResponseQueue = [];
-
-/**
  * @description A counter for the number of currently active fetch requests.
  * This is used to ensure the number of concurrent requests does not exceed
  * `MAX_CONCURRENT_FETCHES`.
@@ -122,32 +116,31 @@ async function setDisabledIconForTab(tabId) {
 }
 
 /**
- * A throttled fetch function that uses a queue to limit concurrent network requests.
+ * A throttled fetch function that uses a single queue to limit
+ * concurrent network requests and enforce a rate limit.
+ *
  * @param {string} url The URL to fetch.
- * @returns {Promise<string|null>} A promise that resolves with the content text or null on error.
+ * @param {object} [options={ responseType: 'text' }] - Configuration for the fetch.
+ * @param {'text'|'response'} [options.responseType='text'] - Determines what the promise resolves with.
+ * - 'text': Resolves with the string content of the response body.
+ * - 'response': Resolves with the full `Response` object to access status codes and headers.
+ * @returns {Promise<string|Response|null>} A promise that resolves with the specified response type, or null on error.
  */
-async function throttledFetch(url) {
+export function throttledFetch(url, options = { responseType: 'text' }) {
   return new Promise((resolve) => {
-    fetchQueue.push({ url, resolve });
+    fetchQueue.push({
+      url,
+      resolve,
+      responseType: options.responseType
+    });
     processFetchQueue();
   });
 }
 
 /**
- * A throttled fetch that resolves with the entire Response object.
- * @param {string} url The URL to fetch.
- * @returns {Promise<Response|null>} A promise that resolves with the Response object or null on network error.
- */
-function throttledFetchResponse(url) {
-  return new Promise((resolve) => {
-    fetchResponseQueue.push({ url, resolve });
-    processFetchResponseQueue();
-  });
-}
-
-/**
- * Processes the fetch queue, ensuring the number of active fetches
- * does not exceed MAX_CONCURRENT_FETCHES.
+ * Processes the fetch queue, handling different response types.
+ * It ensures the number of active fetches does not exceed MAX_CONCURRENT_FETCHES
+ * and enforces a delay between requests.
  */
 function processFetchQueue() {
   if (activeFetches >= MAX_CONCURRENT_FETCHES || fetchQueue.length === 0) {
@@ -155,16 +148,27 @@ function processFetchQueue() {
   }
 
   activeFetches++;
-  const { url, resolve } = fetchQueue.shift();
+  const { url, resolve, responseType } = fetchQueue.shift();
 
   fetch(url)
-    .then(res => {
-      if (!res.ok) {
-        return resolve(null);
+    .then(response => {
+      switch (responseType) {
+        case 'text':
+          if (!response.ok) {
+            return null;
+          }
+          return response.text();
+
+        case 'response':
+          return response;
+
+        default:
+          return null;
       }
-      return res.text();
     })
-    .then(text => resolve(text))
+    .then(result => {
+      resolve(result);
+    })
     .catch(err => {
       console.warn(`[JS Recon Buddy] Fetch error for ${url}:`, err.message);
       resolve(null);
@@ -173,31 +177,6 @@ function processFetchQueue() {
       activeFetches--;
       setTimeout(() => {
         processFetchQueue();
-      }, REQUEST_DELAY_MS);
-    });
-}
-
-/**
- * Processes the response-based fetch queue.
- */
-function processFetchResponseQueue() {
-  if (activeFetches >= MAX_CONCURRENT_FETCHES || fetchResponseQueue.length === 0) {
-    return;
-  }
-
-  activeFetches++;
-  const { url, resolve } = fetchResponseQueue.shift();
-
-  fetch(url)
-    .then(response => resolve(response))
-    .catch(err => {
-      console.warn(`[JS Recon Buddy] Fetch error for ${url}:`, err.message);
-      resolve(null);
-    })
-    .finally(() => {
-      activeFetches--;
-      setTimeout(() => {
-        processFetchResponseQueue();
       }, REQUEST_DELAY_MS);
     });
 }
@@ -381,7 +360,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     (async () => {
       const packageNames = request.packages;
       const checkPromises = packageNames.map(async (name) => {
-        const response = await throttledFetchResponse(`https://registry.npmjs.org/${encodeURIComponent(name)}`);
+        const response = await throttledFetch(`https://registry.npmjs.org/${encodeURIComponent(name)}`, { responseType: 'response' });
 
         if (response && response.status === 404) {
           return name;

@@ -316,12 +316,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   if (request.type === "FETCH_SCRIPTS") {
     const fetchPromises = request.urls.map(url =>
-      fetch(url)
-        .then(res => (res.ok ? res.text() : Promise.reject()))
-        .then(code => ({ source: url, code }))
+      throttledFetch(url)
+        .then(code => (code ? { source: url, code } : null))
         .catch(() => null)
     );
-    Promise.all(fetchPromises).then(results => sendResponse(results));
+    Promise.all(fetchPromises).then(results => {
+      sendResponse(results.filter(r => r !== null));
+    });
     return true;
   }
 

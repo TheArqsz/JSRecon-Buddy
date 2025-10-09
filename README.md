@@ -27,6 +27,30 @@
 
 A simple browser extension to quickly find interesting security-related information on a webpage. It injects an overlay to display its findings without interrupting your workflow.
 
+## Table of Contents
+
+- [Features](#features)
+- [What it finds?](#what-it-finds)
+- [Why this exists?](#why-this-exists)
+- [Examples](#examples)
+- [Browser Compatibility](#browser-compatibility)
+  - [A Note for Chromium-based Users (Known Issue)](#a-note-for-chromium-based-users-known-issue)
+- [How to Install or Update?](#how-to-install-or-update)
+  - [Chromium-based browser](#chromium-based-browser)
+  - [Firefox](#firefox)
+- [How to use?](#how-to-use)
+  - [Master On/Off Toggle](#master-onoff-toggle)
+  - [Main usage (on-demand scan)](#main-usage-on-demand-scan)
+  - [Passive secret scanning](#passive-secret-scanning)
+  - [Source maps deconstruction](#source-maps-deconstruction)
+- [Options and customization](#options-and-customization)
+  - [Available Settings](#available-settings)
+- [Automatic version check](#automatic-version-check)
+- [Contributing](#contributing)
+- [License](#license)
+- [Acknowledgments](#acknowledgments)
+- [Disclaimer](#disclaimer)
+
 ## Features
 
 - On-Page Overlay - all results are displayed in an overlay directly on the page you're testing.
@@ -70,11 +94,15 @@ The scanner uses a set of regex patterns to identify and categorize potential se
 
 - Potential Dependency Confusion - (**opt-in**) identifies private NPM packages that are not on the public registry, flagging a potential dependency confusion attack vector.
 
-    > You can test this feature by cloning this repository, opening the `assets/dependency-confusion-test/index.html` file in your browser, and running an on-demand scan.
+> [!TIP]
+> You can test this feature by cloning this repository, opening the `assets/dependency-confusion-test/index.html` file in your browser, and running an on-demand scan.
 
 - Interesting Parameters - flags potentially vulnerable URL parameters (e.g., redirect, debug, url).
 - Source Maps - finds links to source maps which can expose original source code.
-	> If it is a valid source map, the extension tries to deconstruct source files based on data there
+
+> [!NOTE]
+> If it is a valid source map, the extension tries to deconstruct source files based on data there
+
 - JS Libraries - lists identified JavaScript libraries and their versions.
 - External and Inline Scripts - provides a complete inventory of all JavaScript sources loaded by the page, allowing you to view the content of any script in a formatted viewer.
 

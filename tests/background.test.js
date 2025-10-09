@@ -93,6 +93,20 @@ describe('Background Script Logic', () => {
     jest.resetModules();
   });
 
+  const loadBackgroundScript = async (mocks) => {
+    jest.unstable_mockModule('../src/utils/coreUtils.js', () => ({
+      isScannable: jest.fn().mockResolvedValue(true),
+      isScanningGloballyEnabled: jest.fn().mockResolvedValue(true),
+      isPassiveScanningEnabled: jest.fn().mockResolvedValue(true),
+      ...mocks?.coreUtils,
+    }));
+    jest.unstable_mockModule('../src/utils/rules.js', () => ({
+      secretRules: [],
+      ...mocks?.rules,
+    }));
+    await import('../src/background.js');
+  };
+
   describe('Event Listeners', () => {
     test('onUpdated listener should trigger initial loading state for a scannable page', async () => {
       jest.unstable_mockModule('../src/utils/coreUtils.js', () => ({
@@ -298,6 +312,60 @@ describe('Background Script Logic', () => {
 
       const scrapeCalls = chrome.scripting.executeScript.mock.calls.filter(call => !call[0].hasOwnProperty('args'));
       expect(scrapeCalls.length).toBe(0);
+    });
+  });
+
+  describe('Throttled Fetch Logic', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    test('should fetch and return text content by default', async () => {
+      await loadBackgroundScript();
+      const mockResponse = { ok: true, text: () => Promise.resolve('test content') };
+      global.fetch.mockResolvedValue(mockResponse);
+
+      const throttledFetch = (await import('../src/background.js')).throttledFetch;
+      const promise = throttledFetch('https://example.com/script.js');
+      jest.runAllTimers();
+      const result = await promise;
+
+      expect(global.fetch).toHaveBeenCalledWith('https://example.com/script.js');
+      expect(result).toBe('test content');
+    });
+
+    test('should return the full response object when specified', async () => {
+      await loadBackgroundScript();
+      const mockResponse = { status: 404 };
+      global.fetch.mockResolvedValue(mockResponse);
+
+      const throttledFetch = (await import('../src/background.js')).throttledFetch;
+      const promise = throttledFetch('https://registry.npmjs.org/@private/pkg', { responseType: 'response' });
+      jest.runAllTimers();
+      const result = await promise;
+
+      expect(result.status).toBe(404);
+    });
+
+    test('should respect concurrency and rate limits when fetching scripts', async () => {
+      await loadBackgroundScript();
+      const request = {
+        type: 'FETCH_SCRIPTS',
+        urls: ['url1', 'url2', 'url3', 'url4', 'url5']
+      };
+      global.fetch.mockResolvedValue({ ok: true, text: () => Promise.resolve('content') });
+
+      messageListener(request, {}, jest.fn());
+
+      expect(global.fetch).toHaveBeenCalledTimes(3);
+
+      await jest.advanceTimersByTimeAsync(1);
+
+      expect(global.fetch).toHaveBeenCalledTimes(3);
+
+      await jest.advanceTimersByTimeAsync(200);
+
+      expect(global.fetch).toHaveBeenCalledTimes(5);
     });
   });
 });

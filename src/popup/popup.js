@@ -137,8 +137,7 @@ export function storageChangeListener(changes, areaName) {
   const pageKey = `${activeTabId}|${activeTabUrl}`;
 
   if (areaName === 'local' && changes[pageKey] && findingsList) {
-    const updatedData = changes[pageKey].newValue;
-    renderContent(updatedData, findingsList, true);
+    loadAndRenderSecrets(activeTab, isScannableFunc(activeTabUrl));
   }
 }
 
@@ -276,10 +275,6 @@ export function renderContent(storedData, findingsList, isScannable = true, isPa
       button.onclick = async () => {
         const viewerUrl = chrome.runtime.getURL('src/source-viewer/source-viewer.html');
         const fullContent = contentMap[finding.source];
-        if (!fullContent) {
-          console.warn("[JS Recon Buddy] Could not find content for source:", finding.source);
-          return;
-        }
 
         const storageKey = `source-viewer-${Date.now()}`;
         const dataToStore = { content: fullContent, secret: finding.secret, source: finding.source };

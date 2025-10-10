@@ -1023,14 +1023,14 @@ async function updateActionUI(tabId, findingsCount) {
 
   try {
     if (findingsCount > 0) {
-      chrome.action.setIcon({ tabId, path: `${iconsPath}/icon-found-128.png` });
-      chrome.action.setBadgeText({ tabId, text: findingsCount.toString() });
-      chrome.action.setTitle({ tabId, title: `Found ${findingsCount} potential secrets` })
-      chrome.action.setBadgeBackgroundColor({ tabId, color: '#D92A2A' });
+      await chrome.action.setIcon({ tabId, path: `${iconsPath}/icon-found-128.png` });
+      await chrome.action.setBadgeText({ tabId, text: findingsCount.toString() });
+      await chrome.action.setTitle({ tabId, title: `Found ${findingsCount} potential secrets` })
+      await chrome.action.setBadgeBackgroundColor({ tabId, color: '#D92A2A' });
     } else {
-      chrome.action.setIcon({ tabId, path: `${iconsPath}/icon-notfound-128.png` });
-      chrome.action.setBadgeText({ tabId, text: '' });
-      chrome.action.setTitle({ tabId, title: '' });
+      await chrome.action.setIcon({ tabId, path: `${iconsPath}/icon-notfound-128.png` });
+      await chrome.action.setBadgeText({ tabId, text: '' });
+      await chrome.action.setTitle({ tabId, title: '' });
     }
 
     const { showTitleNotification } = await chrome.storage.sync.get({ showTitleNotification: true });
@@ -1049,13 +1049,14 @@ async function updateActionUI(tabId, findingsCount) {
   }
 }
 
+/* istanbul ignore next */
 /**
  * Scrapes the initial content from the active web page.
  * This function is executed in the context of the web page itself,
  * not in the service worker's context.
  * @returns {{html: string, inlineScripts: string[], externalScripts: string[]}} An object containing the page's content.
  */
-function scrapePageContent() {
+export function scrapePageContent() {
   const scripts = Array.from(document.scripts);
   const inlineScripts = scripts
     .filter(script => !script.src)

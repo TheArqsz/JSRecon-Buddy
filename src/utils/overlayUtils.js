@@ -270,7 +270,7 @@ export async function gatherScripts(mainHtml) {
  * @returns {Promise<{results: Record<string, Map<string, FindingOccurrence[]>>, contentMap: Record<string, string>}>} A promise that resolves to an object containing the final results and the content map.
  */
 export async function processScriptsAsync(scripts, patterns, dependencies, onProgress) {
-  const { shannonEntropy, getLineAndColumn } = dependencies;
+  const { shannonEntropy, getLineAndColumn, getDomainInfo } = dependencies;
   const hostname = window.location.hostname;
 
   let isValidSubdomain = () => false;

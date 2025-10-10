@@ -24,6 +24,7 @@
       updateOverlayHeader,
       gatherScripts,
       processScriptsAsync,
+      getDomainInfo,
       generateFileTreeHTML,
       generateReconFilename
     } = await import(
@@ -145,7 +146,7 @@
         const { results, contentMap } = await processScriptsAsync(
           allScripts,
           PATTERNS,
-          { shannonEntropy, getLineAndColumn },
+          { shannonEntropy, getLineAndColumn, getDomainInfo },
           onProgressCallback
         );
 

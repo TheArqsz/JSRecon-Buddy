@@ -4,7 +4,7 @@ import { secretRules } from '../utils/rules.js';
  * Dynamically populates the rules list container with checkboxes for each rule.
  * @param {string[]} excludedIds - An array of rule IDs that should be checked (excluded).
  */
-function populateRulesList(excludedIds = []) {
+export function populateRulesList(excludedIds = []) {
   const container = document.getElementById('rules-list-container');
   const existingRules = container.querySelectorAll('.checkbox-wrapper');
   existingRules.forEach(rule => rule.remove());

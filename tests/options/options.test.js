@@ -144,79 +144,137 @@ describe('Options Page Logic', () => {
         expect.any(Function)
       );
     });
+
+    test('should display a status message and then clear it after a delay', () => {
+      jest.useFakeTimers();
+      const statusMessage = document.getElementById('status-message');
+
+      chrome.storage.sync.set.mockImplementation((items, callback) => {
+        callback();
+      });
+
+      saveOptions();
+
+      expect(statusMessage.textContent).toBe('Settings saved!');
+      expect(statusMessage.classList.contains('visible')).toBe(true);
+
+      jest.advanceTimersByTime(1500);
+
+      expect(statusMessage.textContent).toBe('');
+      expect(statusMessage.classList.contains('visible')).toBe(false);
+
+      jest.useRealTimers();
+    });
   });
 
-  describe('Rule Search/Filtering', () => {
-    let searchInput;
-    let ruleAws, ruleGoogle, ruleSlack;
-    let noResultsMessage;
+  describe('DOM Initialization', () => {
+    jest.unstable_mockModule('../../src/utils/rules.js', () => ({
+      secretRules: [
+        { id: 'aws-key', description: 'Amazon Web Services Key' },
+        { id: 'google-api', description: 'Google Cloud API Key' },
+        { id: 'slack-token', description: 'Slack API Token' },
+      ],
+    }));
 
-    beforeEach(() => {
-      restoreOptions();
+    beforeEach(async () => {
+      document.body.innerHTML = `
+            <input type="checkbox" id="disable-title-notification">
+            <input type="checkbox" id="disable-passive-scanning">
+            <input type="checkbox" id="enable-dependency-scan">
+            <textarea id="excluded-domains"></textarea>
+            <div id="validation-error"></div>
+            <input id="rule-search">
+            <div id="rules-list-container">
+                <div id="no-rules-found" style="display: none;"></div>
+            </div>
+            <button id="save-button">Save</button>
+            <span id="status-message"></span>
+        `;
 
-      const eventListenerCode = () => {
-        const searchTerm = searchInput.value.toLowerCase();
-        const allRules = document.querySelectorAll('#rules-list-container .checkbox-wrapper');
-        let visibleCount = 0;
-        allRules.forEach(ruleWrapper => {
-          const label = ruleWrapper.querySelector('label');
-          const ruleId = label.textContent.toLowerCase();
-          const ruleDescription = label.title.toLowerCase();
-          if (ruleId.includes(searchTerm) || ruleDescription.includes(searchTerm)) {
-            ruleWrapper.style.display = 'flex';
-            visibleCount++;
-          } else {
-            ruleWrapper.style.display = 'none';
-          }
-        });
-        noResultsMessage.style.display = visibleCount === 0 ? 'block' : 'none';
-      };
-
-      searchInput = document.getElementById('rule-search');
-      searchInput.addEventListener('input', eventListenerCode);
-
-      ruleAws = document.getElementById('rule-aws-key').parentElement;
-      ruleGoogle = document.getElementById('rule-google-api').parentElement;
-      ruleSlack = document.getElementById('rule-slack-token').parentElement;
-      noResultsMessage = document.getElementById('no-rules-found');
+      await import('../../src/options/options.js');
+      document.dispatchEvent(new Event('DOMContentLoaded'));
     });
 
-    test('should filter rules based on a search term matching an ID', () => {
+    test('should call restoreOptions and attach event listeners', () => {
+      expect(chrome.storage.sync.get).toHaveBeenCalled();
+      document.getElementById('save-button').click();
+      expect(chrome.storage.sync.set).toHaveBeenCalled();
+    });
+
+    test('should show matching rules when user types in search box', () => {
+      const searchInput = document.getElementById('rule-search');
+      const awsRule = document.getElementById('rule-aws-key').parentElement;
+      const googleRule = document.getElementById('rule-google-api').parentElement;
+      const noResultsMessage = document.getElementById('no-rules-found');
+
       searchInput.value = 'aws';
       searchInput.dispatchEvent(new Event('input'));
 
-      expect(ruleAws.style.display).toBe('flex');
-      expect(ruleGoogle.style.display).toBe('none');
-      expect(ruleSlack.style.display).toBe('none');
+      expect(awsRule.style.display).toBe('flex');
+      expect(googleRule.style.display).toBe('none');
       expect(noResultsMessage.style.display).toBe('none');
     });
 
-    test('should filter rules based on a search term matching a description', () => {
-      searchInput.value = 'google cloud';
+    test('should hide matching rules and show no-results message on a failed search', () => {
+      const searchInput = document.getElementById('rule-search');
+      const awsRule = document.getElementById('rule-aws-key').parentElement;
+      const noResultsMessage = document.getElementById('no-rules-found');
+
+      searchInput.value = 'nonexistent';
       searchInput.dispatchEvent(new Event('input'));
 
-      expect(ruleAws.style.display).toBe('none');
-      expect(ruleGoogle.style.display).toBe('flex');
-      expect(ruleSlack.style.display).toBe('none');
-    });
-
-    test('should be case-insensitive', () => {
-      searchInput.value = 'SLACK';
-      searchInput.dispatchEvent(new Event('input'));
-
-      expect(ruleAws.style.display).toBe('none');
-      expect(ruleGoogle.style.display).toBe('none');
-      expect(ruleSlack.style.display).toBe('flex');
-    });
-
-    test('should show a "no results" message when no rules match the search', () => {
-      searchInput.value = 'nonexistentrule';
-      searchInput.dispatchEvent(new Event('input'));
-
-      expect(ruleAws.style.display).toBe('none');
-      expect(ruleGoogle.style.display).toBe('none');
-      expect(ruleSlack.style.display).toBe('none');
+      expect(awsRule.style.display).toBe('none');
       expect(noResultsMessage.style.display).toBe('block');
+    });
+  });
+
+  describe('populateRulesList', () => {
+    let populateRulesList;
+
+    beforeEach(async () => {
+      jest.resetModules();
+      jest.unstable_mockModule('../../src/utils/rules.js', () => ({
+        secretRules: [
+          { id: 'aws-key', description: 'Amazon Key' },
+          { id: 'google-api', description: 'Google API Key' },
+        ],
+      }));
+
+      const optionsModule = await import('../../src/options/options.js');
+      populateRulesList = optionsModule.populateRulesList;
+
+      document.body.innerHTML = `<div id="rules-list-container"></div>`;
+    });
+
+    test('should create checkboxes for each secret rule', () => {
+      populateRulesList();
+
+      const ruleWrappers = document.querySelectorAll('.checkbox-wrapper');
+      expect(ruleWrappers.length).toBe(2);
+
+      const firstLabel = ruleWrappers[0].querySelector('label');
+      expect(firstLabel.textContent).toBe('aws-key');
+      expect(firstLabel.title).toBe('Amazon Key');
+    });
+
+    test('should correctly check the boxes for excluded rule IDs', () => {
+      populateRulesList(['google-api']);
+
+      const awsCheckbox = document.getElementById('rule-aws-key');
+      const googleCheckbox = document.getElementById('rule-google-api');
+
+      expect(awsCheckbox.checked).toBe(false);
+      expect(googleCheckbox.checked).toBe(true);
+    });
+
+    test('should clear any existing rules before populating new ones', () => {
+      const container = document.getElementById('rules-list-container');
+      container.innerHTML = '<div class="checkbox-wrapper">Old Content</div>';
+
+      populateRulesList();
+
+      expect(container.textContent).not.toContain('Old Content');
+      expect(container.textContent).toContain('aws-key');
     });
   });
 });

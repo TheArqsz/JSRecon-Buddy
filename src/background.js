@@ -327,13 +327,23 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.type === 'FETCH_FROM_CONTENT_SCRIPT') {
-    fetch(request.url)
-      .then(response => {
-        if (!response.ok) { throw new Error(`HTTP status ${response.status}`); }
-        return response.json();
-      })
-      .then(json => sendResponse(json))
-      .catch(error => sendResponse({ status: 'error', message: error.message }));
+    (async () => {
+      try {
+        const response = await throttledFetch(request.url, { responseType: 'response' });
+
+        if (!response) {
+          throw new Error('Network request failed or was throttled.');
+        }
+        if (!response.ok) {
+          throw new Error(`HTTP status ${response.status}`);
+        }
+        const json = await response.json();
+        sendResponse(json);
+      } catch (error) {
+        console.warn(`[JS Recon Buddy] Error in FETCH_FROM_CONTENT_SCRIPT for ${request.url}:`, error);
+        sendResponse({ status: 'error', message: error.message });
+      }
+    })();
     return true;
   }
 

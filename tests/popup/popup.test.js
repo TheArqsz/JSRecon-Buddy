@@ -1,27 +1,24 @@
 import { describe, test, expect, beforeEach, jest } from '@jest/globals';
 
+jest.unstable_mockModule('../../src/utils/coreUtils.js', () => ({
+  isScannable: jest.fn().mockResolvedValue(true),
+}));
 
-Object.assign(global, {
-  window: {
-    close: jest.fn(),
-  },
-});
-
-import {
+const {
+  updateUIVisibility,
   renderContent,
   initializePopup,
-  storageChangeListener
-} from '../../src/popup/popup.js';
+  storageChangeListener,
+  loadAndRenderSecrets
+} = await import('../../src/popup/popup.js');
+const { isScannable: isScannableFunc } = await import('../../src/utils/coreUtils.js');
 
 const flushPromises = () => new Promise(process.nextTick);
 
 describe('Popup UI and Logic', () => {
   beforeEach(() => {
     document.body.innerHTML = `
-      <label class="switch">
-        <input type="checkbox" id="scan-toggle">
-        <span class="slider round"></span>
-      </label>
+      <input type="checkbox" id="scan-toggle">
       <button id="scan-button"></button>
       <button id="rescan-passive-btn"></button>
       <button id="settings-btn"></button>
@@ -32,9 +29,57 @@ describe('Popup UI and Logic', () => {
       <span id="version-display"></span>
     `;
     jest.clearAllMocks();
+
+    window.location.hash = '';
+    window.close = jest.fn();
+
+    isScannableFunc.mockResolvedValue(true);
+
     chrome.tabs.query.mockResolvedValue([{ id: 1, url: 'https://localhost' }]);
+    chrome.tabs.reload = jest.fn();
     chrome.storage.local.get.mockResolvedValue({});
+    chrome.storage.sync.get.mockResolvedValue({ isScanningEnabled: true, isPassiveScanningEnabled: true });
     chrome.runtime.getManifest.mockReturnValue({ version: '1.2.3' });
+  });
+
+  describe('updateUIVisibility', () => {
+    beforeEach(async () => {
+      await initializePopup();
+    });
+
+    test('should show main content and enable scan button when enabled and scannable', async () => {
+      isScannableFunc.mockResolvedValue(true);
+      await updateUIVisibility(true);
+      expect(document.getElementById('main-content').style.display).toBe('block');
+      expect(document.getElementById('disabled-content').style.display).toBe('none');
+      expect(document.getElementById('scan-button').disabled).toBe(false);
+      expect(chrome.storage.local.get).toHaveBeenCalled();
+    });
+
+    test('should show main content but disable scan button when enabled and not scannable', async () => {
+      isScannableFunc.mockResolvedValue(false);
+      await updateUIVisibility(true);
+      const scanButton = document.getElementById('scan-button');
+      expect(scanButton.disabled).toBe(true);
+      expect(scanButton.title).toBe('This page cannot be scanned.');
+      expect(chrome.storage.local.get).toHaveBeenCalled();
+    });
+
+    test('should hide main content and disable scan button when scanning is disabled', async () => {
+      await updateUIVisibility(false);
+      const scanButton = document.getElementById('scan-button');
+      expect(document.getElementById('main-content').style.display).toBe('none');
+      expect(document.getElementById('disabled-content').style.display).toBe('block');
+      expect(scanButton.disabled).toBe(true);
+      expect(scanButton.title).toBe('Scanning is turned off.');
+    });
+
+    test('should not throw an error if the scan button is missing from the DOM', async () => {
+      document.getElementById('scan-button').remove();
+
+      await expect(updateUIVisibility(true)).resolves.not.toThrow();
+      await expect(updateUIVisibility(false)).resolves.not.toThrow();
+    });
   });
 
   describe('renderContent', () => {
@@ -50,10 +95,57 @@ describe('Popup UI and Logic', () => {
       expect(findingsList.textContent).toContain('This page needs to be reloaded');
     });
 
-    test('should show "scanning in progress" message', () => {
+    test('should show "passive scanning disabled" message', () => {
       const findingsList = document.getElementById('findings-list');
-      renderContent({ status: 'scanning' }, findingsList, true);
+      renderContent(null, findingsList, true, false);
+      expect(findingsList.textContent).toContain('Passive secret scanning is disabled');
+    });
+
+    test('should handle the reload button click', async () => {
+      await initializePopup();
+      const findingsList = document.getElementById('findings-list');
+
+      renderContent(null, findingsList, true, true);
+      const reloadBtn = document.getElementById('reload-btn');
+      reloadBtn.click();
+
+      expect(chrome.tabs.reload).toHaveBeenCalledWith(1);
+    });
+
+    test('should show "scanning in progress" message when status is scanning', () => {
+      const findingsList = document.getElementById('findings-list');
+      const findingsCountSpan = document.getElementById('findings-count');
+      findingsCountSpan.innerText = '(5)';
+
+      const storedData = { status: 'scanning' };
+
+      renderContent(storedData, findingsList, true, true);
+
       expect(findingsList.textContent).toContain('Secret scanning in progress...');
+      expect(findingsCountSpan.innerText).toBe('');
+    });
+
+    test('should render a finding card without location details if either line or column is missing', () => {
+      const findingsList = document.getElementById('findings-list');
+      const storedData = {
+        status: 'complete',
+        results: [
+          { id: 'no-col', secret: 'SECRET_1', source: 'app.js', line: 10 },
+          { id: 'no-line', secret: 'SECRET_2', source: 'app.js', column: 20 },
+          { id: 'both-null', secret: 'SECRET_3', source: 'app.js', line: null, column: null }
+        ],
+        contentMap: { 'app.js': '...' }
+      };
+
+      renderContent(storedData, findingsList, true, true);
+
+      const findingCards = findingsList.querySelectorAll('.finding-card');
+
+      expect(findingCards.length).toBe(3);
+      findingCards.forEach(card => {
+        const locationSpan = card.querySelector('.finding-location');
+        expect(locationSpan).toBeNull();
+      });
     });
 
     test('should render a finding card with location details', () => {
@@ -70,12 +162,161 @@ describe('Popup UI and Logic', () => {
         }],
         contentMap: { 'app.js': 'const secret = "API_SECRET_XYZ";' }
       };
-      renderContent(storedData, findingsList, true);
 
-      expect(findingsList.querySelector('.finding-card')).not.toBeNull();
-      expect(findingsList.textContent).toContain('test-rule-id');
+      renderContent(storedData, findingsList, true, true);
+
       expect(findingsList.textContent).toContain('app.js:42:10');
-      expect(findingsList.querySelector('.btn-primary').disabled).toBe(false);
+    });
+
+    test('should render a finding source as a clickable link if it is a URL', () => {
+      const findingsList = document.getElementById('findings-list');
+      const storedData = {
+        status: 'complete',
+        results: [{
+          id: 'test-rule-external',
+          secret: 'SECRET_IN_EXTERNAL_FILE',
+          source: 'https://cdn.example.com/script.js',
+          line: 1,
+          column: 1
+        }],
+        contentMap: { 'https://cdn.example.com/script.js': '...' }
+      };
+
+      renderContent(storedData, findingsList, true, true);
+
+      const findingCard = findingsList.querySelector('.finding-card');
+      const sourceLink = findingCard.querySelector('.source a');
+
+      expect(sourceLink).not.toBeNull();
+      expect(sourceLink.getAttribute('href')).toBe('https://cdn.example.com/script.js');
+      expect(sourceLink.textContent).toBe('https://cdn.example.com/script.js');
+    });
+
+    test('should disable the "View Source" button for large files or missing content', () => {
+      const findingsList = document.getElementById('findings-list');
+      const storedData = {
+        status: 'complete',
+        results: [
+          {
+            id: 'large-file-finding',
+            secret: 'SECRET_1',
+            source: 'large.js',
+            isSourceTooLarge: true
+          },
+          {
+            id: 'missing-content-finding',
+            secret: 'SECRET_2',
+            source: 'missing.js'
+          }
+        ],
+        contentMap: { 'large.js': 'some content' }
+      };
+
+      renderContent(storedData, findingsList, true, true);
+
+      const buttons = findingsList.querySelectorAll('.btn-primary');
+      expect(buttons.length).toBe(2);
+
+      const expectedTitle = 'Source file is too large to be displayed.';
+
+      expect(buttons[0].disabled).toBe(true);
+      expect(buttons[0].title).toBe(expectedTitle);
+
+      expect(buttons[1].disabled).toBe(true);
+      expect(buttons[1].title).toBe(expectedTitle);
+    });
+
+    test('should attach a working "View Source" button when content is available', async () => {
+      const findingsList = document.getElementById('findings-list');
+      const storedData = {
+        status: 'complete',
+        results: [{
+          id: 'test-rule-clickable',
+          secret: 'VALID_SECRET',
+          source: 'app.js',
+          isSourceTooLarge: false
+        }],
+        contentMap: { 'app.js': 'const secret = "VALID_SECRET";' }
+      };
+
+      renderContent(storedData, findingsList, true, true);
+      const viewSourceButton = findingsList.querySelector('.btn-primary');
+
+      viewSourceButton.click();
+      await flushPromises();
+
+      expect(viewSourceButton.disabled).toBe(false);
+
+      expect(chrome.storage.local.set).toHaveBeenCalledTimes(1);
+
+      expect(chrome.tabs.create).toHaveBeenCalledWith({
+        url: expect.stringContaining('source-viewer.html#source-viewer-')
+      });
+
+      expect(window.close).toHaveBeenCalledTimes(1);
+    });
+
+    test('should not throw an error if the reload button is missing after render', () => {
+      const findingsList = document.getElementById('findings-list');
+
+      const getElementByIdSpy = jest.spyOn(document, 'getElementById');
+      getElementByIdSpy.mockImplementation((id) => {
+        if (id === 'reload-btn') {
+          return null;
+        }
+        return document.querySelector(`#${id}`);
+      });
+
+      expect(() => {
+        renderContent(null, findingsList, true, true);
+      }).not.toThrow();
+
+      getElementByIdSpy.mockRestore();
+    });
+
+    test('should not throw an error if the rescan button is missing from the DOM', () => {
+      document.getElementById('rescan-passive-btn').remove();
+      const findingsList = document.getElementById('findings-list');
+      const storedData = { status: 'complete', results: [] };
+
+      expect(() => {
+        renderContent(storedData, findingsList, true, true);
+      }).not.toThrow();
+    });
+
+    test('should show "No secrets found" when the results array is null or undefined', () => {
+      const findingsList = document.getElementById('findings-list');
+      const storedData = {
+        status: 'complete',
+        results: null
+      };
+
+      renderContent(storedData, findingsList, true, true);
+
+      expect(findingsList.textContent).toContain('No secrets found');
+    });
+
+    test('should truncate secrets that are longer than 100 characters', () => {
+      const findingsList = document.getElementById('findings-list');
+      const longSecret = 'a'.repeat(120);
+      const storedData = {
+        status: 'complete',
+        results: [{
+          id: 'long-secret-rule',
+          secret: longSecret,
+          source: 'app.js',
+        }],
+        contentMap: { 'app.js': '...' }
+      };
+
+      renderContent(storedData, findingsList, true, true);
+
+      const secretElement = findingsList.querySelector('.secret-found code');
+      const expectedTruncatedSecret = longSecret.substring(0, 97) + '...';
+
+      expect(secretElement.textContent).toBe(expectedTruncatedSecret);
+
+      expect(secretElement.textContent).not.toBe(longSecret);
     });
   });
 
@@ -95,21 +336,68 @@ describe('Popup UI and Logic', () => {
       expect(findingsList.textContent).toContain('No secrets found');
     });
 
-    test('should disable scan button for un-scannable URLs', async () => {
-      chrome.tabs.query.mockResolvedValue([{ id: 1, url: 'about:debugging' }]);
+    test('should disable scan button if the page is not scannable', async () => {
+      isScannableFunc.mockResolvedValue(false);
+
       await initializePopup();
+      await flushPromises();
+
       const scanButton = document.getElementById('scan-button');
       expect(scanButton.disabled).toBe(true);
+      expect(scanButton.title).toBe('This page cannot be scanned.');
     });
 
-    test('should display the extension version correctly', async () => {
+    test('should handle the scan toggle change event', async () => {
       await initializePopup();
-      const versionDisplay = document.getElementById('version-display');
-      expect(versionDisplay.textContent).toBe('v1.2.3');
+      await flushPromises();
+      const scanToggle = document.getElementById('scan-toggle');
+
+      scanToggle.checked = false;
+      scanToggle.dispatchEvent(new Event('change'));
+      await flushPromises();
+
+      expect(chrome.storage.sync.set).toHaveBeenCalledWith({ isScanningEnabled: false });
+
+      expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+        type: 'SCANNING_STATE_CHANGED',
+        isEnabled: false
+      });
+
+      expect(document.getElementById('main-content').style.display).toBe('none');
     });
 
-    test('rescan button should send a message and update UI', async () => {
+    test('should log an error and return early if no active tab is found', async () => {
+      chrome.tabs.query.mockResolvedValue([]);
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
+
       await initializePopup();
+      await flushPromises();
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith("[JS Recon Buddy] Could not get active tab.");
+      expect(chrome.storage.local.get).not.toHaveBeenCalled();
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    test('should send a SCAN_PAGE message and close the popup when scan button is clicked', async () => {
+      await initializePopup();
+      await flushPromises();
+      const scanButton = document.getElementById('scan-button');
+
+      scanButton.click();
+      await flushPromises();
+
+      expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+        type: 'SCAN_PAGE',
+        tabId: 1
+      });
+
+      expect(window.close).toHaveBeenCalledTimes(1);
+    });
+
+    test('should handle the rescan button click event', async () => {
+      await initializePopup();
+      await flushPromises();
       const rescanButton = document.getElementById('rescan-passive-btn');
       const findingsList = document.getElementById('findings-list');
 
@@ -119,7 +407,54 @@ describe('Popup UI and Logic', () => {
         type: 'FORCE_PASSIVE_RESCAN',
         tabId: 1
       });
+
       expect(findingsList.textContent).toContain('Rescanning...');
+    });
+
+    test('should handle the settings button click event', async () => {
+      await initializePopup();
+      await flushPromises();
+      const settingsButton = document.getElementById('settings-btn');
+
+      settingsButton.click();
+
+      expect(chrome.runtime.openOptionsPage).toHaveBeenCalledTimes(1);
+    });
+
+    test('should not throw an error if the version display is missing from the DOM', async () => {
+      document.getElementById('version-display').remove();
+
+      await expect(initializePopup()).resolves.not.toThrow();
+    });
+
+    test('should not throw an error if the findings list is missing from the DOM', async () => {
+      document.getElementById('findings-list').remove();
+
+      await expect(initializePopup()).resolves.not.toThrow();
+    });
+
+    test('should not throw an error if findings list is missing on rescan click', async () => {
+      await initializePopup();
+      await flushPromises();
+
+      document.getElementById('findings-list').remove();
+
+      const rescanButton = document.getElementById('rescan-passive-btn');
+
+      expect(() => {
+        rescanButton.click();
+      }).not.toThrow();
+
+      expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+        type: 'FORCE_PASSIVE_RESCAN',
+        tabId: 1
+      });
+    });
+
+    test('should not throw an error if the settings button is missing from the DOM', async () => {
+      document.getElementById('settings-btn').remove();
+
+      await expect(initializePopup()).resolves.not.toThrow();
     });
   });
 
@@ -133,9 +468,73 @@ describe('Popup UI and Logic', () => {
         newValue: { status: 'complete', results: [{ id: 'new-finding', secret: '123', source: 'new.js' }] }
       };
 
+      chrome.storage.local.get.mockResolvedValue({ [pageKey]: newData.newValue });
+
       storageChangeListener({ [pageKey]: newData }, 'local');
+      await flushPromises();
 
       expect(findingsList.textContent).toContain('new-finding');
+    });
+
+    test('should do nothing if the activeTab is not yet set', async () => {
+      jest.resetModules();
+
+      document.body.innerHTML = `<div id="findings-list"></div>`;
+      const findingsList = document.getElementById('findings-list');
+      const originalContent = findingsList.innerHTML;
+
+      const { storageChangeListener: isolatedListener } = await import('../../src/popup/popup.js');
+
+      const pageKey = '1|https://localhost';
+      const newData = { newValue: {} };
+
+      isolatedListener({ [pageKey]: newData }, 'local');
+      await flushPromises();
+
+      expect(findingsList.innerHTML).toBe(originalContent);
+    });
+
+    test('should do nothing if the change is not relevant', async () => {
+      await initializePopup();
+      jest.clearAllMocks();
+
+      const pageKey = '1|https://localhost';
+      const newData = { newValue: { status: 'complete' } };
+
+      storageChangeListener({ [pageKey]: newData }, 'sync');
+      await flushPromises();
+      expect(chrome.storage.local.get).not.toHaveBeenCalled();
+
+      storageChangeListener({ '2|https://other.com': newData }, 'local');
+      await flushPromises();
+      expect(chrome.storage.local.get).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('loadAndRenderSecrets', () => {
+    test('should return early and not throw an error if findings-list element is missing', async () => {
+      document.body.innerHTML = `<div>Some other content</div>`;
+      const tab = { id: 1, url: 'https://example.com' };
+
+      await expect(loadAndRenderSecrets(tab, true)).resolves.not.toThrow();
+
+      expect(chrome.storage.local.get).not.toHaveBeenCalled();
+    });
+
+    test('should display an error message if fetching data fails', async () => {
+      const mockError = new Error('Storage is unavailable');
+      chrome.storage.local.get.mockRejectedValue(mockError);
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => { });
+      const tab = { id: 1, url: 'https://example.com' };
+      const findingsList = document.getElementById('findings-list');
+
+      await loadAndRenderSecrets(tab, true);
+      await flushPromises();
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith("[JS Recon Buddy] Error fetching data:", mockError);
+      expect(findingsList.textContent).toContain('Error loading findings.');
+
+      consoleWarnSpy.mockRestore();
     });
   });
 });

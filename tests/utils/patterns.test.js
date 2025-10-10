@@ -71,7 +71,7 @@ describe('getPatterns', () => {
 
     expect(potentialSecrets).toBeDefined();
     expect(Array.isArray(potentialSecrets)).toBe(true);
-    expect(potentialSecrets.length).toBe(2);
+    expect(potentialSecrets.length).toBe(3);
 
     expect(potentialSecrets[0].ruleId).toBe('aws-access-key');
     expect(potentialSecrets[0].regex).toBeInstanceOf(RegExp);

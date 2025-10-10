@@ -368,4 +368,97 @@ describe('Background Script Logic', () => {
       expect(global.fetch).toHaveBeenCalledTimes(5);
     });
   });
+
+  describe('Error Handling', () => {
+    beforeEach(async () => {
+      await loadBackgroundScript();
+    });
+
+    test('should log a specific warning if updating UI for a closed tab', async () => {
+      jest.useFakeTimers();
+      const mockError = new Error('No tab with id: 1');
+      chrome.action.setIcon.mockRejectedValue(mockError);
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => { });
+
+      chrome.storage.local.get.mockResolvedValue({
+        '1|https://example.com': { status: 'complete', results: [{ id: 'finding' }] }
+      });
+
+      await tabUpdateListener(1, { status: 'loading' }, { id: 1, url: 'https://example.com' });
+
+      await jest.runAllTimersAsync();
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "[JS Recon Buddy] The tab that we were working on was prematurely closed"
+      );
+      consoleSpy.mockRestore();
+    });
+
+    test('should log a generic error for other UI update failures', async () => {
+      jest.useFakeTimers();
+      const mockError = new Error('Some other generic error');
+      chrome.action.setIcon.mockRejectedValue(mockError);
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => { });
+
+      await loadBackgroundScript();
+
+      await webNavigationCompleteListener({ tabId: 1, frameId: 0, url: 'https://example.com' });
+      await jest.runAllTimersAsync();
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "[JS Recon Buddy] There was an uncaught error when updating the tab icon: ",
+        mockError
+      );
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('Injected Function: scrapePageContent', () => {
+    const scrapePageContent = () => {
+      const scripts = Array.from(document.scripts);
+      const inlineScripts = scripts
+        .filter(script => !script.src)
+        .map(script => script.textContent);
+      const externalScripts = scripts
+        .filter(script => script.src)
+        .map(script => script.src);
+      return {
+        html: document.documentElement.outerHTML,
+        inlineScripts,
+        externalScripts,
+      };
+    };
+
+    test('should correctly separate inline and external scripts from the DOM', () => {
+      document.documentElement.innerHTML = `
+        <head></head>
+        <body>
+            <script>console.log("inline 1");</script>
+            <script src="https://example.com/script1.js"></script>
+            <script>console.log("inline 2");</script>
+            <script src="/local/script2.js"></script>
+        </body>
+      `;
+
+      const result = scrapePageContent();
+
+      expect(result.inlineScripts).toEqual(['console.log("inline 1");', 'console.log("inline 2");']);
+      expect(result.externalScripts).toEqual(['https://example.com/script1.js', 'http://localhost/local/script2.js']);
+      expect(result.html).toContain('<script src="https://example.com/script1.js"');
+    });
+
+    test('should handle a document with no scripts gracefully', () => {
+      document.documentElement.innerHTML = `
+        <head></head>
+        <body>
+            <p>No scripts here.</p>
+        </body>
+      `;
+
+      const result = scrapePageContent();
+
+      expect(result.inlineScripts).toEqual([]);
+      expect(result.externalScripts).toEqual([]);
+    });
+  });
 });

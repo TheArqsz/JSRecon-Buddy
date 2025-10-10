@@ -1,3 +1,10 @@
+## [1.14.2](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.14.1...v1.14.2) (2025-10-10)
+
+
+### Bug Fixes
+
+* Properly added throttledFetch to FETCH_FROM_CONTENT_SCRIPT message handler ([3047a85](https://github.com/TheArqsz/JSRecon-Buddy/commit/3047a85d43bce3ddda78eef585fbd10d68e12389))
+
 ## [1.14.1](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.14.0...v1.14.1) (2025-10-09)
 
 

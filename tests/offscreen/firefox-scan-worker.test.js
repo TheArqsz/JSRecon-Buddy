@@ -83,4 +83,69 @@ describe('Firefox Scan Worker', () => {
     expect(response.status).toBe('success');
     expect(response.data.length).toBe(0);
   });
+
+  test('should skip a finding if its entropy is below the rule threshold', () => {
+    const event = {
+      data: {
+        allContentSources: [{
+          source: 'config.js',
+          content: 'const key = "abc";',
+          isTooLarge: false,
+        }],
+        serializableRules: [{
+          id: 'low-entropy-rule',
+          description: 'A rule that requires high entropy',
+          regex: { source: '"(abc)"', flags: 'g' },
+          group: 1,
+          entropy: 4,
+        }],
+      },
+    };
+
+    self.onmessage(event);
+
+    expect(self.postMessage).toHaveBeenCalledTimes(1);
+    const response = self.postMessage.mock.calls[0][0];
+
+    expect(response.status).toBe('success');
+    expect(response.data.length).toBe(0);
+  });
+
+  test('should skip content sources that are empty or marked as too large', () => {
+    const event = {
+      data: {
+        allContentSources: [
+          {
+            source: 'empty.js',
+            content: null,
+            isTooLarge: false,
+          },
+          {
+            source: 'large-file.js',
+            content: 'some content',
+            isTooLarge: true,
+          },
+          {
+            source: 'good-file.js',
+            content: 'const key = "API_KEY_98765";',
+            isTooLarge: false,
+          }
+        ],
+        serializableRules: [{
+          id: 'api-key-rule',
+          regex: { source: 'API_KEY_\\d+', flags: 'g' },
+          group: 0,
+        }],
+      },
+    };
+
+    self.onmessage(event);
+
+    expect(self.postMessage).toHaveBeenCalledTimes(1);
+    const response = self.postMessage.mock.calls[0][0];
+
+    expect(response.status).toBe('success');
+    expect(response.data.length).toBe(1);
+    expect(response.data[0].secret).toBe('API_KEY_98765');
+  });
 });

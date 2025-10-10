@@ -4,3 +4,4 @@ tests/offscreen/firefox-scan-worker.test.js:generic-api-key:27
 tests/source-viewer/source-viewer.test.js:generic-api-key:62
 tests/source-viewer/source-viewer.test.js:generic-api-key:183
 tests/source-viewer/source-viewer.test.js:generic-api-key:215
+tests/offscreen/firefox-scan-worker.test.js:generic-api-key:130

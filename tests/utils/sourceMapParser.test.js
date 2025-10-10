@@ -52,6 +52,15 @@ describe('reconstructSource', () => {
     expect(result['jsrecon.buddy.error.log']).toContain('Source map not found');
   });
 
+  test('should return an error object if there was a network error', async () => {
+    browser.runtime.sendMessage.mockResolvedValue({ status: 'error' });
+
+    const result = await reconstructSource('https://localhost/nonexistent.js.map');
+
+    expect(result['jsrecon.buddy.error.log']).toBeDefined();
+    expect(result['jsrecon.buddy.error.log']).toContain('Failed to fetch source map due to a network or CORS error');
+  });
+
   test('should return an error object for an invalid source map structure', async () => {
     browser.runtime.sendMessage.mockResolvedValue({ version: 3, mappings: '...' });
 
@@ -64,7 +73,7 @@ describe('reconstructSource', () => {
   test('should handle individual failed source file fetches gracefully', async () => {
     const mockSourceMap = {
       version: 3,
-      sources: ['/src/good.js', '/src/bad.js']
+      sources: ['/src/good.js', '/src/bad.js', '/src/error.js']
     };
     browser.runtime.sendMessage.mockResolvedValue(mockSourceMap);
 
@@ -76,12 +85,14 @@ describe('reconstructSource', () => {
       .mockResolvedValueOnce({
         ok: false,
         status: 404
-      });
+      })
+      .mockRejectedValueOnce(new Error('Network connection failed'));
 
     const result = await reconstructSource('https://localhost/maps/bundle.js.map');
 
     expect(result['/src/good.js']).toBe('// Good file');
     expect(result['/src/bad.js']).toContain('Skipping missing source file');
     expect(result['/src/bad.js']).toContain('Status: 404');
+    expect(result).not.toHaveProperty('/src/error.js');
   });
 });

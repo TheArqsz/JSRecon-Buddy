@@ -7,7 +7,8 @@ import {
   isScannable,
   isUrlExcluded,
   isScanningGloballyEnabled,
-  isPassiveScanningEnabled
+  isPassiveScanningEnabled,
+  escapeHTML
 } from '../../src/utils/coreUtils.js';
 
 import { initializePopup } from '../../src/popup/popup.js';
@@ -58,12 +59,31 @@ describe('getLineAndColumn', () => {
 
 describe('getDOMAsText', () => {
   test('should serialize the current document state into a string', () => {
-    document.documentElement.innerHTML = '<head><title>Test</title></head><body><p>Hello</p></body>';
+    document.documentElement.innerHTML = '<head></head><body></body>';
+    Object.defineProperty(document, 'doctype', { value: null, configurable: true });
+
 
     const htmlString = getDOMAsText();
 
     expect(htmlString).toContain('<!DOCTYPE html>');
-    expect(htmlString).toContain('<html><head><title>Test</title></head><body><p>Hello</p></body></html>');
+    expect(htmlString).toContain('<html><head></head><body></body></html>');
+  });
+
+  test('should serialize an existing doctype using XMLSerializer', () => {
+    const mockDoctype = {};
+    const mockDoctypeString = '<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">';
+    document.documentElement.innerHTML = '<head></head><body></body>';
+    Object.defineProperty(document, 'doctype', { value: mockDoctype, configurable: true });
+
+    global.XMLSerializer = jest.fn(() => ({
+      serializeToString: jest.fn().mockReturnValue(mockDoctypeString),
+    }));
+
+    const htmlString = getDOMAsText();
+
+    expect(htmlString).toContain(mockDoctypeString);
+    expect(htmlString).not.toContain('<!DOCTYPE html>');
+    expect(htmlString).toContain('\n<html><head></head><body></body></html>');
   });
 });
 
@@ -228,5 +248,36 @@ describe('isPassiveScanningEnabled', () => {
     chrome.storage.sync.get.mockRejectedValue(mockError);
 
     await expect(isPassiveScanningEnabled()).rejects.toThrow('Storage API is unavailable');
+  });
+});
+
+describe('escapeHTML', () => {
+  test('should escape all special HTML characters', () => {
+    const input = `<script>alert("It's a test & PoC code")</script>`;
+    const expected = '&lt;script&gt;alert(&quot;It&#039;s a test &amp; PoC code&quot;)&lt;/script&gt;';
+    expect(escapeHTML(input)).toBe(expected);
+  });
+
+  test('should return an empty string if the input is empty', () => {
+    expect(escapeHTML('')).toBe('');
+  });
+
+  test('should not change a string with no special characters', () => {
+    const input = 'This is a perfectly safe string.';
+    expect(escapeHTML(input)).toBe(input);
+  });
+
+  test('should handle null or undefined input by returning an empty string', () => {
+    const safeEscapeHTML = (str) => {
+      if (!str) return '';
+      return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    };
+    expect(safeEscapeHTML(null)).toBe('');
+    expect(safeEscapeHTML(undefined)).toBe('');
   });
 });

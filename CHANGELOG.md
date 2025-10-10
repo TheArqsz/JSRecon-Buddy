@@ -1,3 +1,11 @@
+## [1.14.3](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.14.2...v1.14.3) (2025-10-10)
+
+
+### Bug Fixes
+
+* Added proper await to updateUI (based on test results) ([3fb47cb](https://github.com/TheArqsz/JSRecon-Buddy/commit/3fb47cbe2c0ab97d35d67d4ee462ea85538208c1))
+* Improved popup load (based on test results) ([c368df2](https://github.com/TheArqsz/JSRecon-Buddy/commit/c368df26d5bd70ec74f9c6c6a4db84d6ad4dfbca))
+
 ## [1.14.2](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.14.1...v1.14.2) (2025-10-10)
 
 

@@ -56,6 +56,11 @@ describe('getPatterns', () => {
           id: 'generic-api-key',
           regex: '[aA][pP][iI]_?[kK][eE][yY]="([^"]+)"',
           group: 1
+        },
+        {
+          id: 'slack-webhook',
+          regex: 'T[a-zA-Z0-9_]{8}/B[a-zA-Z0-9_]{8}/[a-zA-Z0-9_]{24}',
+          group: undefined,
         }
       ]
     }));
@@ -76,6 +81,9 @@ describe('getPatterns', () => {
     expect(potentialSecrets[1].ruleId).toBe('generic-api-key');
     expect(potentialSecrets[1].regex.source).toBe('[aA][pP][iI]_?[kK][eE][yY]="([^"]+)"');
     expect(potentialSecrets[1].ruleEntropy).toBe(0);
+
+    expect(potentialSecrets[2].ruleId).toBe('slack-webhook');
+    expect(potentialSecrets[2].group).toBe(0);
   });
 
   test('should include correct patterns for "Potential NPM Packages"', async () => {

@@ -115,5 +115,54 @@ describe('version.js', () => {
       const link = document.querySelector('.github-link');
       expect(link.classList.contains('update-available')).toBe(true);
     });
+
+    test('should handle a failed network response gracefully', async () => {
+      chrome.storage.session.get.mockResolvedValue({});
+      const mockResponse = {
+        ok: false,
+        status: 500,
+        json: jest.fn(),
+      };
+      fetch.mockResolvedValue(mockResponse);
+
+      await checkVersion();
+
+      expect(fetch).toHaveBeenCalledTimes(1);
+
+      expect(mockResponse.json).not.toHaveBeenCalled();
+
+      const link = document.querySelector('.github-link');
+      expect(link.classList.contains('update-available')).toBe(false);
+    });
+
+    test('should log a warning if fetching the manifest fails', async () => {
+      const mockError = new Error('Network request failed');
+      chrome.storage.session.get.mockResolvedValue({});
+      fetch.mockRejectedValue(mockError);
+
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => { });
+
+      await checkVersion();
+
+      expect(fetch).toHaveBeenCalledTimes(1);
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        '[JS Recon Buddy] Could not check for new version:',
+        mockError
+      );
+
+      const link = document.querySelector('.github-link');
+      expect(link.classList.contains('update-available')).toBe(false);
+
+      consoleSpy.mockRestore();
+    });
+
+    test('should do nothing if the required UI elements are missing', () => {
+      document.body.innerHTML = '';
+
+      expect(() => {
+        updateUI('1.1.0');
+      }).not.toThrow();
+    });
   });
 });

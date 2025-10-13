@@ -63,7 +63,7 @@ A simple browser extension to quickly find interesting security-related informat
 The scanner uses a set of regex patterns to identify and categorize potential security-related information:
 
 - Subdomains - discovers related subdomains within the code.
-- Endpoints & Paths - uncovers potential API endpoints and other useful paths.
+- Endpoints & Paths - uncovers potential API endpoints and other useful paths. For **Next.js** applications, it also automatically parses (*if possible*) the build manifest to discover all client-side routes.
 - Potential Secrets - scans for API keys, tokens, and other sensitive data using pattern matching and Shannon entropy checks.
 - Potential DOM XSS Sinks - identifies dangerous properties and functions like .innerHTML and document.write.
 

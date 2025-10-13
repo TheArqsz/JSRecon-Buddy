@@ -43,7 +43,8 @@
         "src/utils/coreUtils.js",
         "src/utils/overlayUtils.js",
         "src/utils/sourceMapParser.js",
-        "src/utils/patterns.js"
+        "src/utils/patterns.js",
+        "src/utils/nextjsUtils.js"
       ],
       "matches": [
         "<all_urls>"

@@ -16,6 +16,7 @@
     const { shannonEntropy, getLineAndColumn, getDOMAsText, escapeHTML } = await import(
       chrome.runtime.getURL("src/utils/coreUtils.js")
     );
+    const { extractNextJsData, parseManifestWithString } = await import(chrome.runtime.getURL("src/utils/nextjsUtils.js"));
     const {
       copyTextToClipboard,
       getCacheKey,
@@ -150,6 +151,39 @@
           onProgressCallback
         );
 
+        // Special handling for Next.js applications
+        const { manifestUrl } = extractNextJsData(mainHTML, window.location.href);
+        if (manifestUrl) {
+          progressText.textContent = `Verifying Next.JS manifest...`;
+          const response = await chrome.runtime.sendMessage({
+            type: 'FETCH_NEXTJS_MANIFEST',
+            url: manifestUrl
+          });
+
+          if (response && response.status === 'success' && response.data.length > 0) {
+            try {
+              contentMap[manifestUrl] = response.data;
+              const nextJsRoutes = await parseManifestWithString(response.data);
+
+              if (nextJsRoutes.length > 0) {
+                if (!results['Endpoints']) {
+                  results['Endpoints'] = new Map();
+                }
+                const endpointMap = results['Endpoints'];
+                nextJsRoutes.forEach(route => {
+                  const syntheticOccurrences = [{ source: manifestUrl, index: 0, line: 1, column: 1 }];
+                  if (!endpointMap.has(route)) {
+                    endpointMap.set(route, syntheticOccurrences);
+                  }
+                });
+              }
+            } catch (e) {
+              console.warn('[JS Recon Buddy] Error parsing manifest in sandbox:', e);
+            }
+          }
+        }
+
+        // Special handling for Dependency Confusion checks
         const potentialPackagesMap = results['Potential NPM Packages'];
         if (isNPMDependencyScanEnabled && potentialPackagesMap?.size > 0) {
           progressText.textContent = `Verifying ${potentialPackagesMap.size} NPM packages...`;

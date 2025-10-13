@@ -386,6 +386,21 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     })();
     return true;
   }
+
+  if (request.type === 'FETCH_NEXTJS_MANIFEST') {
+    (async () => {
+      try {
+        const manifestContent = await throttledFetch(request.url);
+        if (!manifestContent) {
+          throw new Error('Manifest content could not be fetched or was empty.');
+        }
+        sendResponse({ status: 'success', data: manifestContent });
+      } catch (error) {
+        sendResponse({ status: 'error', message: error.message });
+      }
+    })();
+    return true;
+  }
 });
 
 /**

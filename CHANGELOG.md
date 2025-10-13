@@ -1,3 +1,10 @@
+## [1.15.0](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.14.3...v1.15.0) (2025-10-13)
+
+
+### Features
+
+* **nextjs_manifest:** Added next.js manifest analysis to endpoints parser ([37f2d4d](https://github.com/TheArqsz/JSRecon-Buddy/commit/37f2d4df879521cf47897dcc7504d9338aa2e0a5))
+
 ## [1.14.3](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.14.2...v1.14.3) (2025-10-10)
 
 

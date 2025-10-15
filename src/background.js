@@ -457,6 +457,53 @@ chrome.runtime.onStartup.addListener(() => {
 });
 
 /**
+ * Migrates old storage entries to the new format with timestamps.
+ * Removes entries that don't match the new prefix or lack timestamps.
+ */
+async function migrateOldStorageFormat() {
+  try {
+    const allItems = await chrome.storage.local.get(null);
+    const keysToRemove = [];
+    const itemsToUpdate = {};
+
+    for (const key in allItems) {
+      const item = allItems[key];
+
+      // Remove old format entries (tabId|url without prefix)
+      if (/^\d+\|/.test(key) && !key.startsWith(PASSIVE_SCAN_RESULT_PREFIX)) {
+        keysToRemove.push(key);
+      }
+      else if (key.startsWith(PASSIVE_SCAN_RESULT_PREFIX) && item && !item.timestamp) {
+        itemsToUpdate[key] = {
+          ...item,
+          timestamp: Date.now()
+        };
+      }
+    }
+
+    if (keysToRemove.length > 0) {
+      await chrome.storage.local.remove(keysToRemove);
+      console.log(`[JS Recon Buddy] Removed ${keysToRemove.length} old entries`);
+    }
+
+    if (Object.keys(itemsToUpdate).length > 0) {
+      await chrome.storage.local.set(itemsToUpdate);
+    }
+
+    console.log('[JS Recon Buddy] Migration complete');
+  } catch (error) {
+    console.error('[JS Recon Buddy] Error during storage migration:', error);
+  }
+}
+
+chrome.runtime.onInstalled.addListener(async (details) => {
+  if (details.reason === 'install' || details.reason === 'update') {
+    console.log('[JS Recon Buddy] Extension installed/updated. Migrating old storage format...');
+    await migrateOldStorageFormat();
+  }
+});
+
+/**
  * @description The delay in milliseconds for debouncing scan triggers.
  * @type {number}
  */

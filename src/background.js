@@ -1,13 +1,25 @@
 import { secretRules } from './utils/rules.js';
-import { isScannable, isScanningGloballyEnabled, isPassiveScanningEnabled } from './utils/coreUtils.js';
+import {
+  isScannable,
+  isScanningGloballyEnabled,
+  isPassiveScanningEnabled,
+  createLRUCache
+} from './utils/coreUtils.js';
 
 const MAX_CONTENT_SIZE_BYTES = 5 * 1024 * 1024;
 
 /**
- * @description A map to keep track of which URLs have already been scanned.
- * @type {Map<string, {findingsCount: number}>}
+ * @description The maximum number of pages to keep in the in-memory scan cache.
+ * @type {number}
  */
-const scannedPages = new Map();
+const SCANNED_PAGES_CACHE_LIMIT = 100;
+
+/**
+ * @description A cache to keep track of which URLs have already been scanned.
+ * It uses an LRU policy to avoid growing indefinitely.
+ * @type {{has: (key: string) => boolean, get: (key: string) => {findingsCount: number}|undefined, set: (key: string, value: {findingsCount: number}) => void, delete: (key: string) => void, keys: () => IterableIterator<string>}}
+ */
+const scannedPages = createLRUCache(SCANNED_PAGES_CACHE_LIMIT);
 
 /**
  * @description A map to track scan promises currently in progress for each tab.

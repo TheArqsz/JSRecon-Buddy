@@ -148,3 +148,42 @@ export const escapeHTML = (str) => {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 };
+
+/**
+ * Creates a simple LRU cache with a fixed size.
+ * It mimics the Map API for `get`, `set`, `has`, `delete`, and `keys`.
+ * @param {number} maxSize The maximum number of items to store in the cache.
+ */
+export function createLRUCache(maxSize) {
+  const cache = new Map();
+
+  return {
+    has: (key) => cache.has(key),
+
+    get: (key) => {
+      if (!cache.has(key)) {
+        return undefined;
+      }
+      const value = cache.get(key);
+      cache.delete(key);
+      cache.set(key, value);
+      return value;
+    },
+
+    set: (key, value) => {
+      if (cache.has(key)) {
+        cache.delete(key);
+      }
+      cache.set(key, value);
+
+      if (cache.size > maxSize) {
+        const oldestKey = cache.keys().next().value;
+        cache.delete(oldestKey);
+      }
+    },
+
+    delete: (key) => cache.delete(key),
+    keys: () => cache.keys(),
+    [Symbol.iterator]: () => cache.entries(),
+  };
+}

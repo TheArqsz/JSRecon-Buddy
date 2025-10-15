@@ -9,6 +9,18 @@ import {
 const MAX_CONTENT_SIZE_BYTES = 5 * 1024 * 1024;
 
 /**
+ * @description The prefix for keys used to store scan results in chrome.storage.local.
+ * @type {string}
+ */
+const PASSIVE_SCAN_RESULT_PREFIX = 'jsrb_passive_scan';
+
+/**
+ * @description The maximum age of a stored scan result in milliseconds before it's considered stale.
+ * @type {number}
+ */
+const MAX_PASSIVE_SCAN_RESULTS_CACHE_AGE_MS = 12 * 60 * 60 * 1000;
+
+/**
  * @description The maximum number of pages to keep in the in-memory scan cache.
  * @type {number}
  */
@@ -280,10 +292,9 @@ chrome.webNavigation.onHistoryStateUpdated.addListener(async (details) => {
  * Cleans up the scanned pages set when a tab is closed to prevent memory leaks.
  */
 chrome.tabs.onRemoved.addListener((tabId) => {
-  for (const [key, value] of scannedPages) {
+  for (const key of scannedPages.keys()) {
     if (key.startsWith(`${tabId}|`)) {
       scannedPages.delete(key);
-      chrome.storage.local.remove(key).catch(e => console.warn(e));
     }
   }
   scansInProgress.delete(tabId);
@@ -334,6 +345,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       }
       triggerPassiveScan(tabId, true);
     })();
+    return false;
   }
 
   if (request.type === 'SCANNING_STATE_CHANGED') {
@@ -347,6 +359,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
       }
     })();
+    return false;
   }
 
   if (request.type === "FETCH_SCRIPTS") {
@@ -393,6 +406,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (typeof request.cacheKeyPrefix === 'string' && typeof request.maxCacheAge === 'number') {
       clearStaleLocalCache(request.cacheKeyPrefix, request.maxCacheAge);
     }
+    return false;
   }
 
   if (request.type === 'OPEN_VIEWER_TAB') {
@@ -436,6 +450,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     })();
     return true;
   }
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  clearStaleLocalCache(PASSIVE_SCAN_RESULT_PREFIX, MAX_PASSIVE_SCAN_RESULTS_CACHE_AGE_MS);
 });
 
 /**
@@ -549,21 +567,22 @@ async function setInitialLoadingState(tabId) {
       return;
     }
 
-    const pageKey = `${tabId}|${tab.url}`;
+    const storageKey = `${PASSIVE_SCAN_RESULT_PREFIX}|${tab.url}`;
+    const sessionCacheKey = `${tab.id}|${tab.url}`;
 
-    const dataWrapper = await chrome.storage.local.get(pageKey);
-    const storedData = dataWrapper[pageKey];
+    const dataWrapper = await chrome.storage.local.get(storageKey);
+    const storedData = dataWrapper[storageKey];
 
     if (storedData && storedData.status === 'complete') {
       const findingsCount = storedData.results ? storedData.results.length : 0;
       await new Promise(r => setTimeout(r, 400));
       await updateActionUI(tabId, findingsCount);
-      scannedPages.set(pageKey, { findingsCount });
+      scannedPages.set(sessionCacheKey, { findingsCount });
       if (findingsCount == 0) {
 
         storedData.contentMap = {};
         try {
-          await chrome.storage.local.set({ [pageKey]: storedData });
+          await chrome.storage.local.set({ [storageKey]: storedData });
         } catch (error) { }
       }
       return;
@@ -579,7 +598,7 @@ async function setInitialLoadingState(tabId) {
     chrome.action.setBadgeText({ tabId, text: '...' });
     chrome.action.setBadgeBackgroundColor({ tabId, color: '#FDB813' });
     chrome.action.setTitle({ tabId, title: 'Page loading, preparing to scan...' });
-    await chrome.storage.local.set({ [pageKey]: { status: 'scanning' } });
+    await chrome.storage.local.set({ [storageKey]: { status: 'scanning' } });
 
   } catch (error) {
     if (error.message.includes('No tab with id')) return;
@@ -594,12 +613,18 @@ async function setInitialLoadingState(tabId) {
  */
 async function triggerPassiveScan(tabId, force = false) {
   try {
-    if (scansInProgress.has(tabId) && !force) {
-      return;
-    }
     const tab = await chrome.tabs.get(tabId);
     if (!tab || !(await isScannable(tab.url))) {
       return;
+    }
+
+    const storageKey = `${PASSIVE_SCAN_RESULT_PREFIX}|${tab.url}`;
+    const sessionCacheKey = `${tab.id}|${tab.url}`;
+
+    if (scansInProgress.has(tabId) && !force) {
+      const oldScanPromise = scansInProgress.get(tabId);
+      oldScanPromise.catch(() => { });
+      scansInProgress.delete(tabId);
     }
 
     if (!scanQueue.some(item => item.tabId === tabId)) {
@@ -608,16 +633,14 @@ async function triggerPassiveScan(tabId, force = false) {
 
     processScanQueue();
 
-
-    const pageKey = `${tab.id}|${tab.url}`;
-    if (scannedPages.has(pageKey) && !force) {
-      const cachedScan = scannedPages.get(pageKey);
+    if (scannedPages.has(sessionCacheKey) && !force) {
+      const cachedScan = scannedPages.get(sessionCacheKey);
       await updateActionUI(tab.id, cachedScan.findingsCount);
       return;
     }
 
-    const dataWrapper = await chrome.storage.local.get(pageKey);
-    const storedData = dataWrapper[pageKey];
+    const dataWrapper = await chrome.storage.local.get(storageKey);
+    const storedData = dataWrapper[storageKey];
 
     if (storedData && storedData.status === 'complete' && !force) {
       const findingsCount = storedData.results ? storedData.results.length : 0;
@@ -625,11 +648,11 @@ async function triggerPassiveScan(tabId, force = false) {
 
         storedData.contentMap = {};
         try {
-          await chrome.storage.local.set({ [pageKey]: storedData });
+          await chrome.storage.local.set({ [storageKey]: storedData });
         } catch (error) { }
       }
       await updateActionUI(tab.id, findingsCount);
-      scannedPages.set(pageKey, { findingsCount });
+      scannedPages.set(sessionCacheKey, { findingsCount });
       return;
     }
 
@@ -642,7 +665,7 @@ async function triggerPassiveScan(tabId, force = false) {
       });
 
       if (injectionResults && injectionResults[0] && injectionResults[0].result) {
-        await runPassiveScan(injectionResults[0].result, tab.id, pageKey);
+        await runPassiveScan(injectionResults[0].result, tab.id, storageKey, sessionCacheKey);
       } else {
         await setIconAndState(tabId, 'idle');
       }
@@ -692,26 +715,28 @@ async function processScanQueue() {
       return;
     }
 
-    const pageKey = `${tab.id}|${tab.url}`;
-    if (scannedPages.has(pageKey) && !force) {
-      const cachedScan = scannedPages.get(pageKey);
+    const storageKey = `${PASSIVE_SCAN_RESULT_PREFIX}|${tab.url}`;
+    const sessionCacheKey = `${tab.id}|${tab.url}`;
+
+    if (scannedPages.has(sessionCacheKey) && !force) {
+      const cachedScan = scannedPages.get(sessionCacheKey);
       await updateActionUI(tab.id, cachedScan.findingsCount);
       return;
     }
 
-    const dataWrapper = await chrome.storage.local.get(pageKey);
-    const storedData = dataWrapper[pageKey];
+    const dataWrapper = await chrome.storage.local.get(storageKey);
+    const storedData = dataWrapper[storageKey];
 
     if (storedData && storedData.status === 'complete' && !force) {
       const findingsCount = storedData.results ? storedData.results.length : 0;
       if (findingsCount == 0) {
         storedData.contentMap = {};
         try {
-          await chrome.storage.local.set({ [pageKey]: storedData });
+          await chrome.storage.local.set({ [storageKey]: storedData });
         } catch (error) { }
       }
       await updateActionUI(tab.id, findingsCount);
-      scannedPages.set(pageKey, { findingsCount });
+      scannedPages.set(sessionCacheKey, { findingsCount });
       return;
     }
 
@@ -724,7 +749,7 @@ async function processScanQueue() {
       });
 
       if (injectionResults && injectionResults[0] && injectionResults[0].result) {
-        await runPassiveScan(injectionResults[0].result, tab.id, pageKey);
+        await runPassiveScan(injectionResults[0].result, tab.id, storageKey, sessionCacheKey);
       } else {
         await setIconAndState(tabId, 'idle');
       }
@@ -763,7 +788,7 @@ let creating;
  */
 async function closeOffscreenDocument() {
   if (await chrome.offscreen.hasDocument()) {
-    console.log('[JS Recon Buddy] Closing idle offscreen document.');
+    console.warn('[JS Recon Buddy] Closing idle offscreen document.');
     await chrome.offscreen.closeDocument();
   }
   if (offscreenTimeoutId) {
@@ -838,10 +863,11 @@ async function getOrCreateOffscreenDocument() {
  * @param {string[]} pageData.inlineScripts An array of inline script contents.
  * @param {string[]} pageData.externalScripts An array of external script URLs.
  * @param {number} tabId The ID of the tab being scanned.
- * @param {string} pageKey The unique key ('${tabId}|${tab.url}') for this page, used for caching and storage.
+ * @param {string} storageKey The key for storing results in chrome.storage.local.
+ * @param {string} sessionCacheKey The key for the in-memory session cache.
  * @returns {Promise<void>} A promise that resolves when the scan coordination is complete and the UI is updated.
  */
-async function runPassiveScan(pageData, tabId, pageKey) {
+async function runPassiveScan(pageData, tabId, storageKey, sessionCacheKey) {
   if (!tabId) {
     return;
   }
@@ -919,55 +945,57 @@ async function runPassiveScan(pageData, tabId, pageKey) {
 
     if (response && response.status === 'success') {
       if (removedTabs.has(tabId)) {
-        console.log(`[JS Recon Buddy] Scan for closed tab ${tabId} was canceled. Discarding results.`);
+        console.warn(`[JS Recon Buddy] Scan for closed tab ${tabId} was canceled. Discarding results.`);
         removedTabs.delete(tabId);
         clearStaleLocalCache(`source-viewer-${tabId}`, -1);
-        chrome.storage.local.get(null, (allItems) => {
-          const keysToRemove = Object.keys(allItems).filter(key => key.startsWith(`${tabId}|`));
-          if (keysToRemove.length > 0) {
-            chrome.storage.local.remove(keysToRemove);
-          }
-        });
         return;
       }
       const findings = response.data;
-      const findingsCount = findings.length;
-      scannedPages.set(pageKey, { findingsCount: findingsCount });
-
+      scannedPages.set(sessionCacheKey, { findingsCount: findings.length });
       try {
-        if (findingsCount == 0) {
-          await chrome.storage.local.set({
-            [pageKey]: {
-              status: 'complete',
-              results: findings,
-              contentMap: {},
-            }
-          });
-        } else {
-          await chrome.storage.local.set({
-            [pageKey]: {
-              status: 'complete',
-              results: findings,
-              contentMap: contentMap,
-            }
-          });
-        }
+        const dataToStore = {
+          status: 'complete',
+          results: findings,
+          contentMap: findings.length > 0 ? contentMap : {},
+          timestamp: Date.now()
+        };
+        await chrome.storage.local.set({ [storageKey]: dataToStore });
       } catch (error) {
         if (error.message.toLowerCase().includes('quota')) {
-          await chrome.storage.local.set({
-            [pageKey]: { status: 'complete', results: findings, contentMap: {} }
-          });
+          console.warn(`[JS Recon Buddy] Storage quota exceeded for ${storageKey}. Saving findings without source code.`);
+          const dataToStore = {
+            status: 'complete',
+            results: findings,
+            contentMap: {},
+            error: 'QUOTA_EXCEEDED',
+            timestamp: Date.now()
+          };
+          try {
+            await chrome.storage.local.set({ [storageKey]: dataToStore });
+          } catch (finalError) {
+            console.error(`[JS Recon Buddy] Failed to save even minimal data for ${storageKey} after quota error:`, finalError);
+          }
         }
       }
-
-      await updateActionUI(tabId, findings.length);
-
+      try {
+        const originalUrl = storageKey.substring(PASSIVE_SCAN_RESULT_PREFIX.length + 1);
+        const currentTab = await chrome.tabs.get(tabId);
+        if (currentTab && currentTab.url === originalUrl) {
+          await updateActionUI(tabId, findings.length).catch(() => { });
+        }
+      } catch (e) { }
     } else {
       console.warn(`[JS Recon Buddy] Offscreen scan failed for tab ${tabId}:`, response ? response.message : "No response received");
 
-      await updateActionUI(tabId, 0);
-      scannedPages.delete(pageKey);
-      await chrome.storage.local.remove(pageKey);
+      try {
+        const originalUrl = storageKey.substring(PASSIVE_SCAN_RESULT_PREFIX.length + 1);
+        const currentTab = await chrome.tabs.get(tabId);
+        if (currentTab && currentTab.url === originalUrl) {
+          await updateActionUI(tabId, 0).catch(() => { });
+          scannedPages.delete(sessionCacheKey);
+          await chrome.storage.local.remove(storageKey);
+        }
+      } catch (e) { }
     }
     resetOffscreenTimeout();
   } else {
@@ -983,50 +1011,68 @@ async function runPassiveScan(pageData, tabId, pageKey) {
           console.log(`[JS Recon Buddy] Scan for closed tab ${tabId} was canceled. Discarding results.`);
           removedTabs.delete(tabId);
           clearStaleLocalCache(`source-viewer-${tabId}`, -1);
-          browser.storage.local.get(null, (allItems) => {
-            const keysToRemove = Object.keys(allItems).filter(key => key.startsWith(`${tabId}|`));
-            if (keysToRemove.length > 0) {
-              browser.storage.local.remove(keysToRemove);
-            }
-          });
           return;
         }
         const findings = response.data;
-        const findingsCount = findings.length;
-        scannedPages.set(pageKey, { findingsCount: findingsCount });
-
+        scannedPages.set(sessionCacheKey, { findingsCount: findings.length });
         try {
-          if (findingsCount == 0) {
-            await chrome.storage.local.set({
-              [pageKey]: { status: 'complete', results: findings, contentMap: {} }
-            });
-          } else {
-            await chrome.storage.local.set({
-              [pageKey]: { status: 'complete', results: findings, contentMap: contentMap }
-            });
-          }
+          const dataToStore = {
+            status: 'complete',
+            results: findings,
+            contentMap: findings.length > 0 ? contentMap : {},
+            timestamp: Date.now()
+          };
+          await chrome.storage.local.set({ [storageKey]: dataToStore });
         } catch (error) {
           if (error.message.toLowerCase().includes('quota')) {
-            await chrome.storage.local.set({
-              [pageKey]: { status: 'complete', results: findings, contentMap: {} }
-            });
+            console.warn(`[JS Recon Buddy] Storage quota exceeded for ${storageKey}. Saving findings without source code.`);
+            const dataToStore = {
+              status: 'complete',
+              results: findings,
+              contentMap: {},
+              error: 'QUOTA_EXCEEDED',
+              timestamp: Date.now()
+            };
+            try {
+              await chrome.storage.local.set({ [storageKey]: dataToStore });
+            } catch (finalError) {
+              console.error(`[JS Recon Buddy] Failed to save even minimal data for ${storageKey} after quota error:`, finalError);
+            }
           }
         }
-        await updateActionUI(tabId, findings.length);
+        try {
+          const originalUrl = storageKey.substring(PASSIVE_SCAN_RESULT_PREFIX.length + 1);
+          const currentTab = await chrome.tabs.get(tabId);
+          if (currentTab && currentTab.url === originalUrl) {
+            await updateActionUI(tabId, findings.length).catch(() => { });
+          }
+        } catch (e) { }
       } else {
         console.warn(`[JS Recon Buddy] Worker scan failed for tab ${tabId}:`, response ? response.message : "No response received");
-        await updateActionUI(tabId, 0);
-        scannedPages.delete(pageKey);
-        await browser.storage.local.remove(pageKey);
+        try {
+          const originalUrl = storageKey.substring(PASSIVE_SCAN_RESULT_PREFIX.length + 1);
+          const currentTab = await chrome.tabs.get(tabId);
+          if (currentTab && currentTab.url === originalUrl) {
+            await updateActionUI(tabId, 0).catch(() => { });
+            scannedPages.delete(sessionCacheKey);
+            await chrome.storage.local.remove(storageKey);
+          }
+        } catch (e) { }
       }
       scanWorker.terminate();
     };
 
     scanWorker.onerror = async (error) => {
       console.warn(`[JS Recon Buddy] Worker scan failed for tab ${tabId}:`, error);
-      await updateActionUI(tabId, 0);
-      scannedPages.delete(pageKey);
-      await browser.storage.local.remove(pageKey);
+      try {
+        const originalUrl = storageKey.substring(PASSIVE_SCAN_RESULT_PREFIX.length + 1);
+        const currentTab = await chrome.tabs.get(tabId);
+        if (currentTab && currentTab.url === originalUrl) {
+          await updateActionUI(tabId, 0).catch(() => { });
+          scannedPages.delete(sessionCacheKey);
+          await chrome.storage.local.remove(storageKey);
+        }
+      } catch (e) { }
       scanWorker.terminate();
     };
 
@@ -1058,7 +1104,7 @@ async function setIconAndState(tabId, state) {
 
       const tab = await chrome.tabs.get(tabId);
       if (tab && tab.url) {
-        const pageKey = `${tabId}|${tab.url}`;
+        const pageKey = `${PASSIVE_SCAN_RESULT_PREFIX}|${tab.url}`;
         await chrome.storage.local.set({ [pageKey]: { status: 'scanning' } });
       }
     } else {

@@ -1,5 +1,7 @@
 import { isScannable as isScannableFunc } from '../utils/coreUtils.js';
 
+const PASSIVE_SCAN_RESULT_PREFIX = 'jsrb_passive_scan';
+
 /**
  * @description The full active tab object, stored globally for access by various functions and listeners.
  * @type {chrome.tabs.Tab}
@@ -134,7 +136,7 @@ export async function initializePopup() {
 export function storageChangeListener(changes, areaName) {
   const findingsList = document.getElementById('findings-list');
   if (!activeTab) return;
-  const pageKey = `${activeTabId}|${activeTabUrl}`;
+  const pageKey = `${PASSIVE_SCAN_RESULT_PREFIX}|${activeTabUrl}`;
 
   if (areaName === 'local' && changes[pageKey] && findingsList) {
     loadAndRenderSecrets(activeTab, isScannableFunc(activeTabUrl));
@@ -153,7 +155,7 @@ export async function loadAndRenderSecrets(tab, isScannable = true) {
   const findingsList = document.getElementById('findings-list');
   if (!findingsList) return;
 
-  const pageKey = `${tab.id}|${tab.url}`;
+  const pageKey = `${PASSIVE_SCAN_RESULT_PREFIX}|${tab.url}`;
 
   findingsList.innerHTML = '<div class="no-findings"><span>Loading findings...</span></div>';
 

@@ -100,18 +100,29 @@ let offscreenTimeoutId = null;
 const OFFSCREEN_IDLE_TIMEOUT_MS = 10 * 60 * 1000;
 
 /**
+ * @description A cached value of the browser name ('chrome' or 'firefox').
+ * @type {string | null}
+ */
+let browserNameCache = null;
+
+/**
  * Checks which browser the extension is running in.
  * @returns {Promise<'firefox'|'chrome'>}
  */
 async function checkBrowser() {
+  if (browserNameCache) {
+    return browserNameCache;
+  }
   if (typeof browser !== 'undefined' && typeof browser.runtime?.getBrowserInfo === 'function') {
     const info = await browser.runtime.getBrowserInfo();
     if (info.name === "Firefox") {
-      return 'firefox';
+      browserNameCache = 'firefox';
+      return browserNameCache;
     }
   }
 
-  return 'chrome';
+  browserNameCache = 'chrome';
+  return browserNameCache;
 }
 
 /**

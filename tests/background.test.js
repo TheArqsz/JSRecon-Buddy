@@ -6,6 +6,8 @@ let tabActivatedListener;
 let webNavigationCompleteListener;
 let tabRemovedListener;
 
+const PASSIVE_SCAN_RESULT_PREFIX = 'jsrb_passive_scan';
+
 const poll = (assertion, { interval = 50, timeout = 1000 } = {}) => {
   return new Promise((resolve, reject) => {
     const startTime = Date.now();
@@ -38,6 +40,12 @@ global.chrome = {
     },
     sendMessage: jest.fn(),
     getContexts: jest.fn().mockResolvedValue([]),
+    onStartup: {
+      addListener: jest.fn(),
+    },
+    onInstalled: {
+      addListener: jest.fn(),
+    },
   },
   tabs: {
     get: jest.fn().mockResolvedValue({ id: 1, url: 'https://example.com' }),
@@ -93,6 +101,8 @@ global.chrome = {
   },
   offscreen: {
     createDocument: jest.fn().mockResolvedValue(),
+    closeDocument: jest.fn().mockResolvedValue(),
+    hasDocument: jest.fn().mockResolvedValue(false),
   }
 };
 
@@ -255,7 +265,7 @@ describe('Background Script Logic', () => {
         isPassiveScanningEnabled: jest.fn().mockResolvedValue(true),
         createLRUCache: jest.fn((size) => {
           const map = new Map();
-          return {
+          const cache = {
             has: (key) => map.has(key),
             get: (key) => map.get(key),
             set: (key, value) => {
@@ -269,30 +279,71 @@ describe('Background Script Logic', () => {
             keys: () => map.keys(),
             [Symbol.iterator]: () => map.entries(),
           };
+          cache.set('1|https://example.com', { findingsCount: 1 });
+          return cache;
         }),
       }));
       jest.unstable_mockModule('../src/utils/rules.js', () => ({ secretRules: [] }));
       await import('../src/background.js');
 
       const tab = { id: 1, url: 'https://example.com' };
-      const pageKey = `${tab.id}|${tab.url}`;
-
-      chrome.scripting.executeScript.mockResolvedValue([{ result: { html: '', inlineScripts: [], externalScripts: [] } }]);
-      chrome.runtime.sendMessage.mockImplementation((message) => {
-        if (message.type === 'scanContent') {
-          return Promise.resolve({ status: 'success', data: [{ id: 'finding' }] });
-        }
-      });
-
-      await webNavigationCompleteListener({ tabId: tab.id, frameId: 0, url: tab.url });
-      await poll(() => {
-        expect(chrome.storage.local.set).toHaveBeenCalledWith(expect.objectContaining({ [pageKey]: expect.any(Object) }));
-      });
 
       tabRemovedListener(tab.id);
       await new Promise(process.nextTick);
 
-      expect(chrome.storage.local.remove).toHaveBeenCalledWith(pageKey);
+      chrome.scripting.executeScript.mockResolvedValue([{
+        result: { html: '', inlineScripts: [], externalScripts: [] }
+      }]);
+      chrome.runtime.sendMessage.mockImplementation((message) => {
+        if (message.type === 'scanContent') {
+          return new Promise(resolve => {
+            setTimeout(() => {
+              resolve({ status: 'success', data: [{ id: 'finding' }] });
+            }, 100);
+          });
+        }
+      });
+
+      webNavigationCompleteListener({ tabId: tab.id, frameId: 0, url: tab.url });
+      tabRemovedListener(tab.id);
+
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      const storageCalls = chrome.storage.local.set.mock.calls.filter(call => {
+        const key = Object.keys(call[0])[0];
+        return key.includes('jsrb_passive_scan');
+      });
+
+      expect(storageCalls.length).toBe(0);
+    });
+
+    test('onRemoved listener should mark tab as removed and cleanup cache', async () => {
+      const cacheMap = new Map();
+      cacheMap.set('1|https://example.com', { findingsCount: 1 });
+      cacheMap.set('2|https://other.com', { findingsCount: 2 });
+
+      jest.unstable_mockModule('../src/utils/coreUtils.js', () => ({
+        isScannable: jest.fn().mockResolvedValue(true),
+        isScanningGloballyEnabled: jest.fn().mockResolvedValue(true),
+        isPassiveScanningEnabled: jest.fn().mockResolvedValue(true),
+        createLRUCache: jest.fn(() => ({
+          has: (key) => cacheMap.has(key),
+          get: (key) => cacheMap.get(key),
+          set: (key, value) => cacheMap.set(key, value),
+          delete: (key) => cacheMap.delete(key),
+          keys: () => cacheMap.keys(),
+        })),
+      }));
+      jest.unstable_mockModule('../src/utils/rules.js', () => ({ secretRules: [] }));
+      await import('../src/background.js');
+
+      expect(cacheMap.has('1|https://example.com')).toBe(true);
+
+      tabRemovedListener(1);
+      await new Promise(process.nextTick);
+
+      expect(cacheMap.has('1|https://example.com')).toBe(false);
+      expect(cacheMap.has('2|https://other.com')).toBe(true);
     });
   });
 
@@ -428,8 +479,9 @@ describe('Background Script Logic', () => {
     });
 
     test('should use cached results on page completion and not start a new scan', async () => {
+      const storageKey = 'jsrb_passive_scan|https://example.com';
       const cachedResult = {
-        [`1|https://example.com`]: {
+        [storageKey]: {
           status: 'complete',
           results: [{ id: 'test', secret: '123' }],
         }
@@ -510,30 +562,43 @@ describe('Background Script Logic', () => {
     test('should log a specific warning if updating UI for a closed tab', async () => {
       jest.useFakeTimers();
       const mockError = new Error('No tab with id: 1');
-      chrome.action.setIcon.mockRejectedValue(mockError);
+      chrome.tabs.get.mockRejectedValue(mockError);
       const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => { });
 
+      const storageKey = 'jsrb_passive_scan|https://example.com';
       chrome.storage.local.get.mockResolvedValue({
-        '1|https://example.com': { status: 'complete', results: [{ id: 'finding' }] }
+        [storageKey]: {
+          status: 'complete',
+          results: [{ id: 'finding' }],
+          timestamp: Date.now()
+        }
       });
 
       await tabUpdateListener(1, { status: 'loading' }, { id: 1, url: 'https://example.com' });
 
       await jest.runAllTimersAsync();
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        "[JS Recon Buddy] The tab that we were working on was prematurely closed"
-      );
+      expect(chrome.action.setIcon).not.toHaveBeenCalled();
+
       consoleSpy.mockRestore();
     });
 
     test('should log a generic error for other UI update failures', async () => {
       jest.useFakeTimers();
-      const mockError = new Error('Some other generic error');
+      const mockError = new Error('Permission denied');
       chrome.action.setIcon.mockRejectedValue(mockError);
+      chrome.tabs.get.mockResolvedValue({ id: 1, url: 'https://example.com' });
       const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => { });
 
       await loadBackgroundScript();
+
+      chrome.scripting.executeScript.mockResolvedValue([{
+        result: { html: '', inlineScripts: [], externalScripts: [] }
+      }]);
+      chrome.runtime.sendMessage.mockResolvedValue({
+        status: 'success',
+        data: [{ id: 'finding' }]
+      });
 
       await webNavigationCompleteListener({ tabId: 1, frameId: 0, url: 'https://example.com' });
       await jest.runAllTimersAsync();

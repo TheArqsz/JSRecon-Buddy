@@ -1,5 +1,7 @@
 import { describe, test, expect, beforeEach, jest } from '@jest/globals';
 
+const PASSIVE_SCAN_RESULT_PREFIX = 'jsrb_passive_scan';
+
 jest.unstable_mockModule('../../src/utils/coreUtils.js', () => ({
   isScannable: jest.fn().mockResolvedValue(true),
 }));
@@ -323,7 +325,7 @@ describe('Popup UI and Logic', () => {
   describe('initializePopup', () => {
     test('should correctly initialize and render with data from storage', async () => {
       chrome.storage.local.get.mockResolvedValue({
-        '1|https://localhost': { status: 'complete', results: [] }
+        'jsrb_passive_scan|https://localhost': { status: 'complete', results: [] }
       });
 
       await initializePopup();
@@ -332,7 +334,7 @@ describe('Popup UI and Logic', () => {
 
       const findingsList = document.getElementById('findings-list');
       expect(chrome.tabs.query).toHaveBeenCalledTimes(1);
-      expect(chrome.storage.local.get).toHaveBeenCalledWith('1|https://localhost');
+      expect(chrome.storage.local.get).toHaveBeenCalledWith('jsrb_passive_scan|https://localhost');
       expect(findingsList.textContent).toContain('No secrets found');
     });
 
@@ -463,7 +465,7 @@ describe('Popup UI and Logic', () => {
       await initializePopup();
 
       const findingsList = document.getElementById('findings-list');
-      const pageKey = '1|https://localhost';
+      const pageKey = 'jsrb_passive_scan|https://localhost';
       const newData = {
         newValue: { status: 'complete', results: [{ id: 'new-finding', secret: '123', source: 'new.js' }] }
       };
@@ -485,7 +487,7 @@ describe('Popup UI and Logic', () => {
 
       const { storageChangeListener: isolatedListener } = await import('../../src/popup/popup.js');
 
-      const pageKey = '1|https://localhost';
+      const pageKey = 'jsrb_passive_scan|https://localhost';
       const newData = { newValue: {} };
 
       isolatedListener({ [pageKey]: newData }, 'local');
@@ -498,14 +500,14 @@ describe('Popup UI and Logic', () => {
       await initializePopup();
       jest.clearAllMocks();
 
-      const pageKey = '1|https://localhost';
+      const pageKey = 'jsrb_passive_scan|https://localhost';
       const newData = { newValue: { status: 'complete' } };
 
       storageChangeListener({ [pageKey]: newData }, 'sync');
       await flushPromises();
       expect(chrome.storage.local.get).not.toHaveBeenCalled();
 
-      storageChangeListener({ '2|https://other.com': newData }, 'local');
+      storageChangeListener({ 'jsrb_passive_scan|https://other.com': newData }, 'local');
       await flushPromises();
       expect(chrome.storage.local.get).not.toHaveBeenCalled();
     });

@@ -60,7 +60,7 @@ const MAX_CONCURRENT_SCANS = 7
  * prevent sending requests too quickly to a server.
  * @type {number}
  */
-const REQUEST_DELAY_MS = 200;
+const REQUEST_DELAY_MS = 100;
 
 /**
  * @description A counter for currently active full-page scans.
@@ -74,6 +74,18 @@ let activeScans = 0;
  * @type {Array<{tabId: number, force: boolean}>}
  */
 const scanQueue = [];
+
+/**
+ * @description The ID of the timeout used to close the offscreen document after a period of inactivity.
+ * @type {number | null}
+ */
+let offscreenTimeoutId = null;
+
+/**
+ * @description The duration in milliseconds the offscreen document can be idle before it's closed.
+ * @type {number}
+ */
+const OFFSCREEN_IDLE_TIMEOUT_MS = 10 * 60 * 1000;
 
 /**
  * Checks which browser the extension is running in.
@@ -213,7 +225,7 @@ chrome.webNavigation.onCompleted.addListener(async (details) => {
     return;
   }
   if (details.frameId === 0) {
-    triggerPassiveScan(details.tabId);
+    debouncedTriggerPassiveScan(details.tabId);
   }
 });
 
@@ -224,7 +236,7 @@ chrome.webNavigation.onCompleted.addListener(async (details) => {
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
   if (!(await isScanningGloballyEnabled() && await isPassiveScanningEnabled())) return;
 
-  triggerPassiveScan(activeInfo.tabId);
+  debouncedTriggerPassiveScan(activeInfo.tabId);
 });
 
 /**
@@ -237,7 +249,7 @@ chrome.webNavigation.onHistoryStateUpdated.addListener(async (details) => {
     return;
   }
   if (details.frameId === 0) {
-    triggerPassiveScan(details.tabId);
+    debouncedTriggerPassiveScan(details.tabId);
   }
 });
 
@@ -306,7 +318,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       const tabs = await chrome.tabs.query({});
       for (const tab of tabs) {
         if (request.isEnabled) {
-          triggerPassiveScan(tab.id);
+          debouncedTriggerPassiveScan(tab.id);
         } else {
           await setDisabledIconForTab(tab.id);
         }
@@ -402,6 +414,40 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 });
+
+/**
+ * @description The delay in milliseconds for debouncing scan triggers.
+ * @type {number}
+ */
+const DEBOUNCE_DELAY_MS = 200;
+
+/**
+ * Creates a debounced function that delays invoking `func` until after `delay`
+ * milliseconds have elapsed since the last time the debounced function was
+ * invoked. The debounce is tracked on a per-key basis.
+ *
+ * @param {Function} func The function to debounce.
+ * @param {number} delay The number of milliseconds to delay.
+ * @returns {function(key: any, ...args: any[]): void} A new debounced function.
+ */
+function debounceByKey(func, delay) {
+  const timers = new Map();
+
+  return function (key, ...args) {
+    if (timers.has(key)) {
+      clearTimeout(timers.get(key));
+    }
+
+    const timerId = setTimeout(() => {
+      func(key, ...args);
+      timers.delete(key);
+    }, delay);
+
+    timers.set(key, timerId);
+  };
+}
+
+const debouncedTriggerPassiveScan = debounceByKey(triggerPassiveScan, DEBOUNCE_DELAY_MS);
 
 /**
  * Iterates over local storage to find and remove stale cache entries.
@@ -706,6 +752,34 @@ async function processScanQueue() {
 let creating;
 
 /**
+ * @description Closes the offscreen document if it exists, conserving memory.
+ * Also clears any pending timeout timers.
+ * @returns {Promise<void>}
+ */
+async function closeOffscreenDocument() {
+  if (await chrome.offscreen.hasDocument()) {
+    console.log('[JS Recon Buddy] Closing idle offscreen document.');
+    await chrome.offscreen.closeDocument();
+  }
+  if (offscreenTimeoutId) {
+    clearTimeout(offscreenTimeoutId);
+    offscreenTimeoutId = null;
+  }
+}
+
+/**
+ * @description Sets or resets a timer that will close the offscreen document after
+ * the specified idle duration. This is called after any task involving the
+ * offscreen document is completed.
+ */
+function resetOffscreenTimeout() {
+  if (offscreenTimeoutId) {
+    clearTimeout(offscreenTimeoutId);
+  }
+  offscreenTimeoutId = setTimeout(closeOffscreenDocument, OFFSCREEN_IDLE_TIMEOUT_MS);
+}
+
+/**
  * Ensures a single offscreen document exists, creating it only if necessary.
  *
  * This function is designed to be idempotent; it can be called multiple times,
@@ -818,6 +892,11 @@ async function runPassiveScan(pageData, tabId, pageKey) {
   const browserName = await checkBrowser();
 
   if (browserName === 'chrome') {
+    if (offscreenTimeoutId) {
+      clearTimeout(offscreenTimeoutId);
+      offscreenTimeoutId = null;
+    }
+
     await getOrCreateOffscreenDocument();
 
     try {
@@ -885,7 +964,7 @@ async function runPassiveScan(pageData, tabId, pageKey) {
       scannedPages.delete(pageKey);
       await chrome.storage.local.remove(pageKey);
     }
-
+    resetOffscreenTimeout();
   } else {
     const scanWorker = new Worker(
       browser.runtime.getURL("src/offscreen/firefox-scan-worker.js"),

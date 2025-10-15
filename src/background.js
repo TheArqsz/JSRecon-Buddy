@@ -684,15 +684,11 @@ async function processScanQueue() {
 
   try {
     if (scansInProgress.has(tabId) && !force) {
-      activeScans--;
-      processScanQueue();
       return;
     }
 
     const tab = await chrome.tabs.get(tabId);
     if (!tab || !(await isScannable(tab.url))) {
-      activeScans--;
-      processScanQueue();
       return;
     }
 
@@ -700,8 +696,6 @@ async function processScanQueue() {
     if (scannedPages.has(pageKey) && !force) {
       const cachedScan = scannedPages.get(pageKey);
       await updateActionUI(tab.id, cachedScan.findingsCount);
-      activeScans--;
-      processScanQueue();
       return;
     }
 
@@ -718,8 +712,6 @@ async function processScanQueue() {
       }
       await updateActionUI(tab.id, findingsCount);
       scannedPages.set(pageKey, { findingsCount });
-      activeScans--;
-      processScanQueue();
       return;
     }
 
@@ -740,26 +732,16 @@ async function processScanQueue() {
 
     scansInProgress.set(tabId, scanPromise);
 
-    scanPromise.catch(error => {
-      if (error?.message?.includes('Missing host permission for the tab')) {
-        console.warn(`[JS Recon Buddy] Firefox's error for tab ${tabId} was thrown`, error);
-      } else if (error?.message && !error.message.includes('No tab with id')) {
-        console.warn(`[JS Recon Buddy] An unexpected error occurred during the scan for tab ${tabId}:`, error);
-      }
-      setIconAndState(tabId, 'idle');
-    }).finally(() => {
-      scansInProgress.delete(tabId);
-      activeScans--;
-      processScanQueue();
-    });
+    await scanPromise;
   } catch (error) {
+    if (error?.message && !error.message.includes('No tab with id') && !error.message.includes('Missing host permission for the tab')) {
+      console.error(`[JS Recon Buddy] Error processing scan for tab ${tabId}:`, error);
+    }
+    setIconAndState(tabId, 'idle').catch(() => { });
+  } finally {
     scansInProgress.delete(tabId);
     activeScans--;
     processScanQueue();
-    if (error.message.includes('No tab with id')) {
-      return;
-    }
-    console.error(`[JS Recon Buddy] Error processing scan for tab ${tabId}:`, error);
   }
 }
 

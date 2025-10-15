@@ -6,6 +6,26 @@ let tabActivatedListener;
 let webNavigationCompleteListener;
 let tabRemovedListener;
 
+const poll = (assertion, { interval = 50, timeout = 1000 } = {}) => {
+  return new Promise((resolve, reject) => {
+    const startTime = Date.now();
+
+    const tryAssert = () => {
+      try {
+        assertion();
+        resolve();
+      } catch (error) {
+        if (Date.now() - startTime > timeout) {
+          reject(error);
+        } else {
+          setTimeout(tryAssert, interval);
+        }
+      }
+    };
+    tryAssert();
+  });
+};
+
 global.chrome = {
   runtime: {
     getURL: jest.fn(path => `chrome-extension://test-id/${path}`),
@@ -98,7 +118,23 @@ describe('Background Script Logic', () => {
       isScannable: jest.fn().mockResolvedValue(true),
       isScanningGloballyEnabled: jest.fn().mockResolvedValue(true),
       isPassiveScanningEnabled: jest.fn().mockResolvedValue(true),
-      ...mocks?.coreUtils,
+      createLRUCache: jest.fn((size) => {
+        const map = new Map();
+        return {
+          has: (key) => map.has(key),
+          get: (key) => map.get(key),
+          set: (key, value) => {
+            if (map.size >= size) {
+              const firstKey = map.keys().next().value;
+              map.delete(firstKey);
+            }
+            map.set(key, value);
+          },
+          delete: (key) => map.delete(key),
+          keys: () => map.keys(),
+        };
+      }),
+      ...mocks?.coreUtils
     }));
     jest.unstable_mockModule('../src/utils/rules.js', () => ({
       secretRules: [],
@@ -113,6 +149,22 @@ describe('Background Script Logic', () => {
         isScannable: jest.fn().mockResolvedValue(true),
         isScanningGloballyEnabled: jest.fn().mockResolvedValue(true),
         isPassiveScanningEnabled: jest.fn().mockResolvedValue(true),
+        createLRUCache: jest.fn((size) => {
+          const map = new Map();
+          return {
+            has: (key) => map.has(key),
+            get: (key) => map.get(key),
+            set: (key, value) => {
+              if (map.size >= size) {
+                const firstKey = map.keys().next().value;
+                map.delete(firstKey);
+              }
+              map.set(key, value);
+            },
+            delete: (key) => map.delete(key),
+            keys: () => map.keys(),
+          };
+        }),
       }));
       jest.unstable_mockModule('../src/utils/rules.js', () => ({ secretRules: [] }));
 
@@ -134,6 +186,22 @@ describe('Background Script Logic', () => {
         isScannable: jest.fn().mockResolvedValue(true),
         isScanningGloballyEnabled: jest.fn().mockResolvedValue(true),
         isPassiveScanningEnabled: jest.fn().mockResolvedValue(false),
+        createLRUCache: jest.fn((size) => {
+          const map = new Map();
+          return {
+            has: (key) => map.has(key),
+            get: (key) => map.get(key),
+            set: (key, value) => {
+              if (map.size >= size) {
+                const firstKey = map.keys().next().value;
+                map.delete(firstKey);
+              }
+              map.set(key, value);
+            },
+            delete: (key) => map.delete(key),
+            keys: () => map.keys(),
+          };
+        }),
       }));
       jest.unstable_mockModule('../src/utils/rules.js', () => ({ secretRules: [] }));
 
@@ -153,6 +221,22 @@ describe('Background Script Logic', () => {
         isScannable: jest.fn().mockResolvedValue(false),
         isScanningGloballyEnabled: jest.fn().mockResolvedValue(true),
         isPassiveScanningEnabled: jest.fn().mockResolvedValue(true),
+        createLRUCache: jest.fn((size) => {
+          const map = new Map();
+          return {
+            has: (key) => map.has(key),
+            get: (key) => map.get(key),
+            set: (key, value) => {
+              if (map.size >= size) {
+                const firstKey = map.keys().next().value;
+                map.delete(firstKey);
+              }
+              map.set(key, value);
+            },
+            delete: (key) => map.delete(key),
+            keys: () => map.keys(),
+          };
+        }),
       }));
       jest.unstable_mockModule('../src/utils/rules.js', () => ({ secretRules: [] }));
 
@@ -168,7 +252,24 @@ describe('Background Script Logic', () => {
       jest.unstable_mockModule('../src/utils/coreUtils.js', () => ({
         isScannable: jest.fn().mockResolvedValue(true),
         isScanningGloballyEnabled: jest.fn().mockResolvedValue(true),
-        isPassiveScanningEnabled: jest.fn().mockResolvedValue(true)
+        isPassiveScanningEnabled: jest.fn().mockResolvedValue(true),
+        createLRUCache: jest.fn((size) => {
+          const map = new Map();
+          return {
+            has: (key) => map.has(key),
+            get: (key) => map.get(key),
+            set: (key, value) => {
+              if (map.size >= size) {
+                const firstKey = map.keys().next().value;
+                map.delete(firstKey);
+              }
+              map.set(key, value);
+            },
+            delete: (key) => map.delete(key),
+            keys: () => map.keys(),
+            [Symbol.iterator]: () => map.entries(),
+          };
+        }),
       }));
       jest.unstable_mockModule('../src/utils/rules.js', () => ({ secretRules: [] }));
       await import('../src/background.js');
@@ -184,9 +285,9 @@ describe('Background Script Logic', () => {
       });
 
       await webNavigationCompleteListener({ tabId: tab.id, frameId: 0, url: tab.url });
-      await new Promise(resolve => setTimeout(resolve, 50));
-
-      expect(chrome.storage.local.set).toHaveBeenCalledWith(expect.objectContaining({ [pageKey]: expect.any(Object) }));
+      await poll(() => {
+        expect(chrome.storage.local.set).toHaveBeenCalledWith(expect.objectContaining({ [pageKey]: expect.any(Object) }));
+      });
 
       tabRemovedListener(tab.id);
       await new Promise(process.nextTick);
@@ -201,6 +302,22 @@ describe('Background Script Logic', () => {
         isScannable: jest.fn().mockResolvedValue(true),
         isScanningGloballyEnabled: jest.fn().mockResolvedValue(true),
         isPassiveScanningEnabled: jest.fn().mockResolvedValue(true),
+        createLRUCache: jest.fn((size) => {
+          const map = new Map();
+          return {
+            has: (key) => map.has(key),
+            get: (key) => map.get(key),
+            set: (key, value) => {
+              if (map.size >= size) {
+                const firstKey = map.keys().next().value;
+                map.delete(firstKey);
+              }
+              map.set(key, value);
+            },
+            delete: (key) => map.delete(key),
+            keys: () => map.keys(),
+          };
+        }),
       }));
       jest.unstable_mockModule('../src/utils/rules.js', () => ({ secretRules: [] }));
       await import('../src/background.js');
@@ -290,6 +407,22 @@ describe('Background Script Logic', () => {
         isScannable: jest.fn().mockResolvedValue(true),
         isScanningGloballyEnabled: jest.fn().mockResolvedValue(true),
         isPassiveScanningEnabled: jest.fn().mockResolvedValue(true),
+        createLRUCache: jest.fn((size) => {
+          const map = new Map();
+          return {
+            has: (key) => map.has(key),
+            get: (key) => map.get(key),
+            set: (key, value) => {
+              if (map.size >= size) {
+                const firstKey = map.keys().next().value;
+                map.delete(firstKey);
+              }
+              map.set(key, value);
+            },
+            delete: (key) => map.delete(key),
+            keys: () => map.keys(),
+          };
+        }),
       }));
       jest.unstable_mockModule('../src/utils/rules.js', () => ({ secretRules: [] }));
     });
@@ -305,10 +438,10 @@ describe('Background Script Logic', () => {
       await import('../src/background.js');
 
       await webNavigationCompleteListener({ tabId: 1, frameId: 0, url: 'https://example.com' });
-      await new Promise(resolve => setTimeout(resolve, 50));
-
-      expect(chrome.action.setIcon).toHaveBeenCalledWith(expect.objectContaining({ path: expect.stringContaining('icon-found') }));
-      expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ tabId: 1, text: '1' });
+      await poll(() => {
+        expect(chrome.action.setIcon).toHaveBeenCalledWith(expect.objectContaining({ path: expect.stringContaining('icon-found') }));
+        expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ tabId: 1, text: '1' });
+      });
 
       const scrapeCalls = chrome.scripting.executeScript.mock.calls.filter(call => !call[0].hasOwnProperty('args'));
       expect(scrapeCalls.length).toBe(0);

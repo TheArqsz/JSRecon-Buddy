@@ -8,7 +8,8 @@ import {
   isUrlExcluded,
   isScanningGloballyEnabled,
   isPassiveScanningEnabled,
-  escapeHTML
+  escapeHTML,
+  createLRUCache
 } from '../../src/utils/coreUtils.js';
 
 import { initializePopup } from '../../src/popup/popup.js';
@@ -279,5 +280,120 @@ describe('escapeHTML', () => {
     };
     expect(safeEscapeHTML(null)).toBe('');
     expect(safeEscapeHTML(undefined)).toBe('');
+  });
+});
+
+describe('createLRUCache', () => {
+  test('should set and get items correctly', () => {
+    const cache = createLRUCache(3);
+    cache.set('a', 1);
+    cache.set('b', 2);
+    expect(cache.get('a')).toBe(1);
+    expect(cache.get('b')).toBe(2);
+  });
+
+  test('should return undefined for non-existent keys', () => {
+    const cache = createLRUCache(3);
+    cache.set('a', 1);
+    expect(cache.get('b')).toBeUndefined();
+  });
+
+  test('should update the value of an existing key', () => {
+    const cache = createLRUCache(3);
+    cache.set('a', 1);
+    cache.set('a', 100);
+    expect(cache.get('a')).toBe(100);
+  });
+
+  test('should correctly report presence of keys with has()', () => {
+    const cache = createLRUCache(3);
+    cache.set('a', 1);
+    expect(cache.has('a')).toBe(true);
+    expect(cache.has('b')).toBe(false);
+  });
+
+  test('should evict the least recently used item when capacity is exceeded', () => {
+    const cache = createLRUCache(3);
+    cache.set('a', 1);
+    cache.set('b', 2);
+    cache.set('c', 3);
+    cache.set('d', 4);
+    expect(cache.has('a')).toBe(false);
+    expect(cache.get('b')).toBe(2);
+    expect(cache.get('c')).toBe(3);
+    expect(cache.get('d')).toBe(4);
+  });
+
+  test('should make an item the most recently used on get()', () => {
+    const cache = createLRUCache(3);
+    cache.set('a', 1);
+    cache.set('b', 2);
+    cache.set('c', 3);
+    cache.get('a');
+    cache.set('d', 4);
+    expect(cache.has('b')).toBe(false);
+    expect(cache.has('a')).toBe(true);
+  });
+
+  test('should make an item the most recently used on set() for an existing key', () => {
+    const cache = createLRUCache(3);
+    cache.set('a', 1);
+    cache.set('b', 2);
+    cache.set('c', 3);
+    cache.set('a', 100);
+    cache.set('d', 4);
+    expect(cache.has('b')).toBe(false);
+    expect(cache.get('a')).toBe(100);
+  });
+
+  test('should delete items correctly', () => {
+    const cache = createLRUCache(3);
+    cache.set('a', 1);
+    expect(cache.has('a')).toBe(true);
+    cache.delete('a');
+    expect(cache.has('a')).toBe(false);
+  });
+
+  test('should be iterable and yield [key, value] pairs in insertion order', () => {
+    const cache = createLRUCache(3);
+    cache.set('a', 1);
+    cache.set('b', 2);
+    cache.set('c', 3);
+    const entries = [...cache];
+    expect(entries).toEqual([['a', 1], ['b', 2], ['c', 3]]);
+  });
+
+  test('keys() should return an iterator of keys in insertion order', () => {
+    const cache = createLRUCache(3);
+    cache.set('a', 1);
+    cache.set('b', 2);
+    cache.set('c', 3);
+    const keys = [...cache.keys()];
+    expect(keys).toEqual(['a', 'b', 'c']);
+  });
+
+  test('should handle a maxSize of 1', () => {
+    const cache = createLRUCache(1);
+    cache.set('a', 1);
+    cache.set('b', 2);
+    expect(cache.has('a')).toBe(false);
+    expect(cache.get('b')).toBe(2);
+  });
+
+  test('should handle a maxSize of 0', () => {
+    const cache = createLRUCache(0);
+    cache.set('a', 1);
+    expect(cache.has('a')).toBe(false);
+  });
+
+  test('should handle various key and value types', () => {
+    const cache = createLRUCache(5);
+    const objKey = { id: 1 };
+    cache.set(123, 'number key');
+    cache.set('a', null);
+    cache.set(objKey, { data: 'object key' });
+    expect(cache.get(123)).toBe('number key');
+    expect(cache.get('a')).toBeNull();
+    expect(cache.get(objKey)).toEqual({ data: 'object key' });
   });
 });

@@ -481,16 +481,25 @@ async function migrateOldStorageFormat() {
       }
     }
 
+    const promises = [];
+
     if (keysToRemove.length > 0) {
-      await chrome.storage.local.remove(keysToRemove);
-      console.log(`[JS Recon Buddy] Removed ${keysToRemove.length} old entries`);
+      promises.push(
+        chrome.storage.local.remove(keysToRemove)
+      );
     }
 
     if (Object.keys(itemsToUpdate).length > 0) {
-      await chrome.storage.local.set(itemsToUpdate);
+      promises.push(
+        chrome.storage.local.set(itemsToUpdate)
+      );
     }
 
-    console.log('[JS Recon Buddy] Migration complete');
+    if (promises.length > 0) {
+      console.log('[JS Recon Buddy] Extension installed/updated. Migrating old storage format...');
+      await Promise.all(promises);
+      console.log('[JS Recon Buddy] Migration complete');
+    }
   } catch (error) {
     console.error('[JS Recon Buddy] Error during storage migration:', error);
   }
@@ -498,8 +507,9 @@ async function migrateOldStorageFormat() {
 
 chrome.runtime.onInstalled.addListener(async (details) => {
   if (details.reason === 'install' || details.reason === 'update') {
-    console.log('[JS Recon Buddy] Extension installed/updated. Migrating old storage format...');
+    console.log("[JS Recon Buddy] Running installation/update tasks...");
     await migrateOldStorageFormat();
+    console.log("[JS Recon Buddy] Installation/update tasks completed.");
   }
 });
 

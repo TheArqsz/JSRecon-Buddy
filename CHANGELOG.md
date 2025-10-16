@@ -1,3 +1,17 @@
+## [1.16.0](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.15.0...v1.16.0) (2025-10-16)
+
+
+### Features
+
+* **storage:** share scan results across tabs with URL-based caching ([fd17fc3](https://github.com/TheArqsz/JSRecon-Buddy/commit/fd17fc3c13faec01a9a11e4442b0e4e0a6fa0067))
+
+
+### Bug Fixes
+
+* Added debounce for passive scanning and offscreen idle timeout ([1d725ff](https://github.com/TheArqsz/JSRecon-Buddy/commit/1d725ffe884ffb2fb1bc813cd4bf7ea1c21826e0))
+* Added LRU cache (scanned pages) to fix the unbounded memory growth ([9d609bf](https://github.com/TheArqsz/JSRecon-Buddy/commit/9d609bfbe20c4213da46e7abd861e1552f89bc25))
+* **queue:** prevent scan queue from freezing ([b262f88](https://github.com/TheArqsz/JSRecon-Buddy/commit/b262f88e373efdb0279e0f0f416327db147486b5))
+
 ## [1.15.0](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.14.3...v1.15.0) (2025-10-13)
 
 

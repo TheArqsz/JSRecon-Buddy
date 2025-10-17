@@ -107,15 +107,19 @@ export async function initializePopup() {
     window.close();
   });
 
-  rescanPassiveButton.addEventListener('click', () => {
-    chrome.runtime.sendMessage({
-      type: 'FORCE_PASSIVE_RESCAN',
-      tabId: activeTabId
-    });
+  rescanPassiveButton.addEventListener('click', async () => {
+    try {
+      await chrome.runtime.sendMessage({
+        type: 'FORCE_PASSIVE_RESCAN',
+        tabId: activeTabId
+      });
 
-    const findingsList = document.getElementById('findings-list');
-    if (findingsList) {
-      findingsList.innerHTML = '<div class="no-findings"><span>Rescanning...</span></div>';
+      const findingsList = document.getElementById('findings-list');
+      if (findingsList) {
+        findingsList.innerHTML = '<div class="no-findings"><span>Rescanning...</span></div>';
+      }
+    } catch (error) {
+      console.error('[JS Recon Buddy] Failed to trigger rescan:', error);
     }
   });
 

@@ -1,3 +1,12 @@
+## [1.16.1](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.16.0...v1.16.1) (2025-10-17)
+
+
+### Bug Fixes
+
+* **popup:** Added handler for stale global vars on tab change (tab switches while popup is open) ([31ecbf4](https://github.com/TheArqsz/JSRecon-Buddy/commit/31ecbf4c5487df1ead57e5939a5724ad097f0dea))
+* **popup:** Fixed potential race condition ([1d3ff11](https://github.com/TheArqsz/JSRecon-Buddy/commit/1d3ff11982ed5937349c4d46af890751bb501921))
+* **popup:** Fixed potential security issue (xss in secret card) ([147b568](https://github.com/TheArqsz/JSRecon-Buddy/commit/147b56801ac4b3dfaa87662ff21fa49e98b196d3))
+
 ## [1.16.0](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.15.0...v1.16.0) (2025-10-16)
 
 

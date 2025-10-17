@@ -244,29 +244,50 @@ export function renderContent(storedData, findingsList, isScannable = true, isPa
   for (const finding of findings) {
     const card = document.createElement('div');
     card.className = 'finding-card';
+
+    const title = document.createElement('h2');
+    title.textContent = finding.id;
+    card.appendChild(title);
+
     const truncatedSecret = finding.secret.length > 100 ? `${finding.secret.substring(0, 97)}...` : finding.secret;
-    let description = finding.description
-      ? `<p class="description">About: <span>${finding.description}</span></p>`
-      : '';
 
-    let locationHTML = '';
-    if (finding.line && finding.column) {
-      locationHTML = `<span class="finding-location">:${finding.line}:${finding.column}</span>`;
+    if (finding.description) {
+      const desc = document.createElement('p');
+      desc.className = 'description';
+      desc.innerHTML = 'About: <span></span>';
+      desc.querySelector('span').textContent = finding.description;
+      card.appendChild(desc);
     }
 
-    let sourceFormatted = '';
+    const sourcePara = document.createElement('p');
+    sourcePara.className = 'source';
+    sourcePara.innerHTML = 'Source: <span></span>';
+    const sourceSpan = sourcePara.querySelector('span');
+
     if (finding.source.startsWith('http')) {
-      sourceFormatted = `<a target="_blank" href="${finding.source}">${finding.source}</a>${locationHTML}`;
+      const link = document.createElement('a');
+      link.href = finding.source;
+      link.textContent = finding.source;
+      link.target = '_blank';
+      sourceSpan.appendChild(link);
     } else {
-      sourceFormatted = `${finding.source}${locationHTML}`;
+      sourceSpan.textContent = finding.source;
     }
 
-    card.innerHTML = `
-      <h2>${finding.id}</h2>
-      ${description}
-      <p class="source">Source: <span>${sourceFormatted}</span></p>
-      <p class="secret-found"><code>${truncatedSecret}</code></p>
-    `;
+    if (finding.line && finding.column) {
+      const location = document.createElement('span');
+      location.className = 'finding-location';
+      location.textContent = `:${finding.line}:${finding.column}`;
+      sourceSpan.appendChild(location);
+    }
+    card.appendChild(sourcePara);
+
+    const secretPara = document.createElement('p');
+    secretPara.className = 'secret-found';
+    const code = document.createElement('code');
+    code.textContent = truncatedSecret;
+    secretPara.appendChild(code);
+    card.appendChild(secretPara);
 
     const button = document.createElement('button');
     button.className = 'btn btn-primary';

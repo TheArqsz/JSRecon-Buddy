@@ -566,11 +566,14 @@ async function updateActionUI(tabId, findingsCount) {
  * while waiting for the scan to complete.
  *
  * @param {number} tabId The ID of the tab that has started loading.
+ * @param {chrome.tabs.Tab|null} [tab=null] The tab object (optional, will be fetched if not provided).
  * @returns {Promise<void>} A promise that resolves once the initial state has been set.
  */
-async function setInitialLoadingState(tabId) {
+async function setInitialLoadingState(tabId, tab = null) {
   try {
-    const tab = await chrome.tabs.get(tabId);
+    if (!tab) {
+      tab = await chrome.tabs.get(tabId);
+    }
     if (!tab || !(await isScannable(tab.url))) {
       return;
     }
@@ -618,10 +621,13 @@ async function setInitialLoadingState(tabId) {
  * Main function to trigger a passive scan on a tab if necessary.
  * @param {number} tabId - The ID of the tab to potentially scan.
  * @param {boolean} [force=false] - If true, bypasses the duplicate scan check.
+ * @param {chrome.tabs.Tab|null} [tab=null] The tab object (optional, will be fetched if not provided).
  */
-async function triggerPassiveScan(tabId, force = false) {
+async function triggerPassiveScan(tabId, force = false, tab = null) {
   try {
-    const tab = await chrome.tabs.get(tabId);
+    if (!tab) {
+      tab = await chrome.tabs.get(tabId);
+    }
     if (!tab || !(await isScannable(tab.url))) {
       return;
     }
@@ -1040,8 +1046,11 @@ const debouncedTriggerPassiveScan = debounceByKey(triggerPassiveScan, DEBOUNCE_D
  * initiates the actual scan once the page is fully loaded.
  */
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  if (tab && !(await isScanningGloballyEnabled() && await isPassiveScanningEnabled())) {
-    return setDisabledIconForTab(tabId);
+  if (!(await isScanningGloballyEnabled() && await isPassiveScanningEnabled())) {
+    if (tab) {
+      return setDisabledIconForTab(tabId);
+    }
+    return;
   }
   if (!tab || !(await isScannable(tab.url))) {
     return;
@@ -1171,7 +1180,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       const tabs = await chrome.tabs.query({});
       for (const tab of tabs) {
         if (request.isEnabled) {
-          debouncedTriggerPassiveScan(tab.id);
+          debouncedTriggerPassiveScan(tab.id, false, tab);
         } else {
           await setDisabledIconForTab(tab.id);
         }

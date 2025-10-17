@@ -322,3 +322,17 @@ export function renderContent(storedData, findingsList, isScannable = true, isPa
 document.addEventListener('DOMContentLoaded', initializePopup);
 
 chrome.storage.onChanged.addListener(storageChangeListener);
+
+chrome.tabs.onActivated.addListener(async (activeInfo) => {
+  try {
+    const newTab = await chrome.tabs.get(activeInfo.tabId);
+    activeTab = newTab;
+    activeTabId = newTab.id;
+    activeTabUrl = newTab.url;
+
+    const { isScanningEnabled } = await chrome.storage.sync.get({ isScanningEnabled: true });
+    await updateUIVisibility(isScanningEnabled);
+  } catch (error) {
+    console.warn('[JS Recon Buddy] Error updating popup for new tab:', error);
+  }
+});

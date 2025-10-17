@@ -133,13 +133,14 @@ export async function initializePopup() {
  * active tab is updated (e.g., a scan finishes), it re-renders the popup
  * content dynamically without needing to reopen it.
  */
-export function storageChangeListener(changes, areaName) {
+export async function storageChangeListener(changes, areaName) {
   const findingsList = document.getElementById('findings-list');
   if (!activeTab) return;
   const pageKey = `${PASSIVE_SCAN_RESULT_PREFIX}|${activeTabUrl}`;
 
   if (areaName === 'local' && changes[pageKey] && findingsList) {
-    loadAndRenderSecrets(activeTab, isScannableFunc(activeTabUrl));
+    const isScannable = await isScannableFunc(activeTabUrl);
+    await loadAndRenderSecrets(activeTab, isScannable);
   }
 }
 

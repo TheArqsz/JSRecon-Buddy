@@ -12,7 +12,24 @@ import {
   createLRUCache
 } from '../../src/utils/coreUtils.js';
 
-import { initializePopup } from '../../src/popup/popup.js';
+global.chrome = {
+  tabs: {
+    onActivated: {
+      addListener: jest.fn(),
+    },
+    get: jest.fn().mockResolvedValue({ id: 1, url: 'https://example.com' }),
+  },
+
+  storage: {
+    onChanged: {
+      addListener: jest.fn(),
+    },
+    sync: {
+      get: jest.fn().mockResolvedValue({}),
+      set: jest.fn(),
+    },
+  }
+};
 
 describe('shannonEntropy', () => {
   test('should return 0 for an empty or null string', () => {

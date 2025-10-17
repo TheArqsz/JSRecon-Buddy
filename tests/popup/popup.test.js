@@ -1,3 +1,5 @@
+global.chrome.tabs.onActivated = { addListener: jest.fn() };
+
 import { describe, test, expect, beforeEach, jest } from '@jest/globals';
 
 const PASSIVE_SCAN_RESULT_PREFIX = 'jsrb_passive_scan';
@@ -405,6 +407,8 @@ describe('Popup UI and Logic', () => {
 
       rescanButton.click();
 
+      await flushPromises();
+
       expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
         type: 'FORCE_PASSIVE_RESCAN',
         tabId: 1
@@ -457,6 +461,23 @@ describe('Popup UI and Logic', () => {
       document.getElementById('settings-btn').remove();
 
       await expect(initializePopup()).resolves.not.toThrow();
+    });
+
+    test('should log an error if triggering a rescan fails', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
+      const mockError = new Error('Extension context invalidated.');
+      chrome.runtime.sendMessage.mockRejectedValue(mockError);
+
+      await initializePopup();
+      await flushPromises();
+      const rescanButton = document.getElementById('rescan-passive-btn');
+
+      rescanButton.click();
+      await flushPromises();
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[JS Recon Buddy] Failed to trigger rescan:', mockError);
+
+      consoleErrorSpy.mockRestore();
     });
   });
 
@@ -535,6 +556,49 @@ describe('Popup UI and Logic', () => {
 
       expect(consoleWarnSpy).toHaveBeenCalledWith("[JS Recon Buddy] Error fetching data:", mockError);
       expect(findingsList.textContent).toContain('Error loading findings.');
+
+      consoleWarnSpy.mockRestore();
+    });
+  });
+
+  describe('chrome.tabs.onActivated listener', () => {
+    let onActivatedListener;
+
+    beforeEach(async () => {
+      chrome.tabs.onActivated.addListener = jest.fn(listener => {
+        onActivatedListener = listener;
+      });
+
+      jest.resetModules();
+      jest.unstable_mockModule('../../src/utils/coreUtils.js', () => ({
+        isScannable: jest.fn().mockResolvedValue(true),
+      }));
+      await import('../../src/popup/popup.js');
+    });
+
+    test('should update UI when a new tab is activated successfully', async () => {
+      const newTab = { id: 2, url: 'https://new-active-tab.com' };
+      chrome.tabs.get.mockResolvedValue(newTab);
+      chrome.storage.sync.get.mockResolvedValue({ isScanningEnabled: true });
+
+      await onActivatedListener({ tabId: 2 });
+      await flushPromises();
+
+      expect(chrome.tabs.get).toHaveBeenCalledWith(2);
+      expect(chrome.storage.sync.get).toHaveBeenCalledWith({ isScanningEnabled: true });
+      expect(chrome.storage.local.get).toHaveBeenCalledWith('jsrb_passive_scan|https://new-active-tab.com');
+    });
+
+    test('should log a warning if getting the new tab info fails', async () => {
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => { });
+      const mockError = new Error('Invalid tab ID.');
+      chrome.tabs.get.mockRejectedValue(mockError);
+
+      await onActivatedListener({ tabId: 999 });
+      await flushPromises();
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith('[JS Recon Buddy] Error updating popup for new tab:', mockError);
+      expect(chrome.storage.sync.get).not.toHaveBeenCalled();
 
       consoleWarnSpy.mockRestore();
     });

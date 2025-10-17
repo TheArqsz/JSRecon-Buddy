@@ -1,6 +1,5 @@
 import { isScannable as isScannableFunc } from '../utils/coreUtils.js';
-
-const PASSIVE_SCAN_RESULT_PREFIX = 'jsrb_passive_scan';
+import { PASSIVE_SCAN_RESULT_PREFIX } from '../utils/constants.js';
 
 /**
  * @description The full active tab object, stored globally for access by various functions and listeners.

@@ -520,7 +520,8 @@ describe('Popup UI and Logic', () => {
       await flushPromises();
 
       expect(consoleErrorSpy).toHaveBeenCalledWith("[JS Recon Buddy] Could not get active tab.");
-      expect(chrome.storage.local.get).not.toHaveBeenCalled();
+      expect(chrome.storage.local.get).toHaveBeenCalledTimes(1);
+      expect(chrome.storage.local.get).toHaveBeenCalledWith('extensionState');
 
       consoleErrorSpy.mockRestore();
     });
@@ -637,7 +638,9 @@ describe('Popup UI and Logic', () => {
       await initializePopup();
       await flushPromises();
 
-      expect(chrome.storage.local.get).toHaveBeenCalledTimes(1);
+      // 1. call is for 'extensionState' at the start of initializePopup.
+      // 2. call is for the page scan results inside loadAndRenderSecrets.
+      expect(chrome.storage.local.get).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -799,6 +802,41 @@ describe('Popup UI and Logic', () => {
       await flushPromises();
 
       expect(chrome.storage.local.get).toHaveBeenLastCalledWith('jsrb_passive_scan|https://tab2.com');
+    });
+  });
+
+  describe('Installation/Update State', () => {
+    test('should display installation message and disable UI when state is "installing"', async () => {
+      chrome.storage.local.get.mockResolvedValue({ extensionState: 'installing' });
+
+      await initializePopup();
+      await flushPromises();
+
+      const disabledContent = document.getElementById('disabled-content');
+      expect(disabledContent.textContent).toContain('Wait for installation/update to finish.');
+      expect(disabledContent.style.display).toBe('block');
+      expect(document.getElementById('main-content').style.display).toBe('none');
+
+      expect(chrome.tabs.query).not.toHaveBeenCalled();
+
+      expect(document.getElementById('scan-button').disabled).toBe(true);
+      expect(document.getElementById('rescan-passive-btn').disabled).toBe(true);
+      expect(document.getElementById('settings-btn').disabled).toBe(true);
+      expect(document.getElementById('scan-toggle').disabled).toBe(true);
+    });
+
+    test('should continue normally if checking extensionState throws an error', async () => {
+      const mockError = new Error('Storage failed');
+      chrome.storage.local.get.mockRejectedValueOnce(mockError);
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => { });
+
+      await initializePopup();
+      await flushPromises();
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith("[JS Recon Buddy] Could not get extension state:", mockError);
+      expect(chrome.tabs.query).toHaveBeenCalled();
+
+      consoleWarnSpy.mockRestore();
     });
   });
 });

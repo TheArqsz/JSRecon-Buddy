@@ -1,3 +1,12 @@
+## [1.16.2](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.16.1...v1.16.2) (2025-10-19)
+
+
+### Bug Fixes
+
+* Added domUtils to manifest ([e54d9b6](https://github.com/TheArqsz/JSRecon-Buddy/commit/e54d9b65a7e6ecce912df83131a255496fdb7dd8))
+* Added try catch to generateStorageKey ([c9b18bc](https://github.com/TheArqsz/JSRecon-Buddy/commit/c9b18bc7eef70ae4885d8388138fa1dba960418c))
+* **popup:** Changed how popup handles findings (sanitization) ([5b58285](https://github.com/TheArqsz/JSRecon-Buddy/commit/5b58285af46c07e6b7d992bc660169e29bd1d649))
+
 ## [1.16.1](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.16.0...v1.16.1) (2025-10-17)
 
 

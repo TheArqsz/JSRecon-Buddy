@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "JS Recon Buddy",
-  "version": "1.16.1",
+  "version": "1.16.2",
   "description": "Analyze page scripts for bug bounty reconnaissance.",
   "permissions": [
     "activeTab",

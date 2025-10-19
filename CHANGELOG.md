@@ -1,3 +1,10 @@
+## [1.16.3](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.16.2...v1.16.3) (2025-10-19)
+
+
+### Bug Fixes
+
+* Added proper message on extension being installed/updated ([1097c57](https://github.com/TheArqsz/JSRecon-Buddy/commit/1097c576b2bc724a4b54e3a4f91ee293724d19bb))
+
 ## [1.16.2](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.16.1...v1.16.2) (2025-10-19)
 
 

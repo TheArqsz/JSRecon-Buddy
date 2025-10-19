@@ -1,5 +1,15 @@
 import { isScannable as isScannableFunc } from '../utils/coreUtils.js';
 import { PASSIVE_SCAN_RESULT_PREFIX } from '../utils/constants.js';
+import {
+  createElement,
+  createText,
+  createSpan,
+  createSecureLink,
+  clearElement,
+  sanitizeFinding,
+  isValidElement,
+  generateStorageKey
+} from '../utils/domUtils.js';
 
 /**
  * @description The full active tab object, stored globally for access by various functions and listeners.
@@ -64,13 +74,12 @@ export async function initializePopup() {
     return;
   }
 
-  const isScannable = await isScannableFunc(activeTab.url);
-
   activeTabId = activeTab.id;
   activeTabUrl = activeTab.url;
 
   const { isScanningEnabled } = await chrome.storage.sync.get({ isScanningEnabled: true });
   scanToggle.checked = isScanningEnabled;
+
   await updateUIVisibility(isScanningEnabled);
 
   scanToggle.addEventListener('change', async (event) => {
@@ -84,13 +93,6 @@ export async function initializePopup() {
 
     await updateUIVisibility(isEnabled);
   });
-
-  if (!isScannable) {
-    scanButton.disabled = true;
-    scanButton.title = "This page cannot be scanned.";
-  }
-
-  loadAndRenderSecrets(activeTab, isScannable);
 
   const manifest = chrome.runtime.getManifest();
   const versionDisplay = document.getElementById('version-display');
@@ -131,6 +133,8 @@ export async function initializePopup() {
   }
 }
 
+let storageUpdateTimeout = null;
+
 /**
  * @description Listens for changes in local storage. If the data for the
  * active tab is updated (e.g., a scan finishes), it re-renders the popup
@@ -142,8 +146,15 @@ export async function storageChangeListener(changes, areaName) {
   const pageKey = `${PASSIVE_SCAN_RESULT_PREFIX}|${activeTabUrl}`;
 
   if (areaName === 'local' && changes[pageKey] && findingsList) {
-    const isScannable = await isScannableFunc(activeTabUrl);
-    await loadAndRenderSecrets(activeTab, isScannable);
+    if (storageUpdateTimeout) {
+      clearTimeout(storageUpdateTimeout);
+    }
+
+    storageUpdateTimeout = setTimeout(async () => {
+      const isScannable = await isScannableFunc(activeTabUrl);
+      await loadAndRenderSecrets(activeTab, isScannable);
+      storageUpdateTimeout = null;
+    }, 50);
   }
 }
 
@@ -188,7 +199,13 @@ export async function loadAndRenderSecrets(tab, isScannable = true) {
  * @param {boolean} [isPassiveScanningEnabled=true] - A flag indicating if passive scanning is currently enabled.
  */
 export function renderContent(storedData, findingsList, isScannable = true, isPassiveScanningEnabled = true) {
-  findingsList.innerHTML = '';
+  if (!isValidElement(findingsList)) {
+    console.error('[JS Recon Buddy] Invalid findingsList element');
+    return;
+  }
+
+  clearElement(findingsList);
+
   const rescanButton = document.getElementById('rescan-passive-btn');
   const findingsCountSpan = document.getElementById('findings-count');
 
@@ -229,7 +246,7 @@ export function renderContent(storedData, findingsList, isScannable = true, isPa
     return;
   }
 
-  const findings = storedData.results;
+  const findingsToRender = storedData.results;
 
   const contentMap = storedData.contentMap || {};
 
@@ -237,58 +254,56 @@ export function renderContent(storedData, findingsList, isScannable = true, isPa
     rescanButton.style.display = 'inline-flex';
   }
 
-  if (!findings || findings.length === 0) {
+  if (!findingsToRender || findingsToRender.length === 0) {
     findingsList.innerHTML = '<div class="no-findings"><span>No secrets found.</span></div>';
     return;
   }
 
-  findingsCountSpan.innerText = `(${findings.length})`
+  if (findingsCountSpan) {
+    findingsCountSpan.innerText = `(${findingsToRender.length})`;
+  }
 
-  for (const finding of findings) {
-    const card = document.createElement('div');
-    card.className = 'finding-card';
+  for (const rawFinding of findingsToRender) {
+    const finding = sanitizeFinding(rawFinding);
 
-    const title = document.createElement('h2');
-    title.textContent = finding.id;
+    const card = createElement('div', 'finding-card');
+
+    const title = createElement('h2', '', finding.id);
     card.appendChild(title);
 
     const truncatedSecret = finding.secret.length > 100 ? `${finding.secret.substring(0, 97)}...` : finding.secret;
 
     if (finding.description) {
-      const desc = document.createElement('p');
-      desc.className = 'description';
-      desc.innerHTML = 'About: <span></span>';
-      desc.querySelector('span').textContent = finding.description;
+      const desc = createElement('p', 'description');
+      desc.appendChild(createText('About: '));
+      desc.appendChild(createSpan(finding.description));
       card.appendChild(desc);
     }
 
-    const sourcePara = document.createElement('p');
-    sourcePara.className = 'source';
-    sourcePara.innerHTML = 'Source: <span></span>';
-    const sourceSpan = sourcePara.querySelector('span');
+    const sourcePara = createElement('p', 'source');
+    sourcePara.appendChild(createText('Source: '));
+    const sourceSpan = createElement('span');
 
     if (finding.source.startsWith('http')) {
-      const link = document.createElement('a');
-      link.href = finding.source;
-      link.textContent = finding.source;
-      link.target = '_blank';
-      sourceSpan.appendChild(link);
+      const link = createSecureLink(finding.source, finding.source);
+      if (link) {
+        sourceSpan.appendChild(link);
+      } else {
+        sourceSpan.textContent = finding.source;
+      }
     } else {
       sourceSpan.textContent = finding.source;
     }
+    sourcePara.appendChild(sourceSpan);
 
     if (finding.line && finding.column) {
-      const location = document.createElement('span');
-      location.className = 'finding-location';
-      location.textContent = `:${finding.line}:${finding.column}`;
+      const location = createSpan(`:${finding.line}:${finding.column}`, 'finding-location');
       sourceSpan.appendChild(location);
     }
     card.appendChild(sourcePara);
 
-    const secretPara = document.createElement('p');
-    secretPara.className = 'secret-found';
-    const code = document.createElement('code');
-    code.textContent = truncatedSecret;
+    const secretPara = createElement('p', 'secret-found');
+    const code = createElement('code', '', truncatedSecret);
     secretPara.appendChild(code);
     card.appendChild(secretPara);
 
@@ -303,8 +318,12 @@ export function renderContent(storedData, findingsList, isScannable = true, isPa
         const viewerUrl = chrome.runtime.getURL('src/source-viewer/source-viewer.html');
         const fullContent = contentMap[finding.source];
 
-        const storageKey = `source-viewer-${Date.now()}`;
-        const dataToStore = { content: fullContent, secret: finding.secret, source: finding.source };
+        const storageKey = generateStorageKey('source-viewer');
+        const dataToStore = {
+          content: fullContent,
+          secret: finding.secret,
+          source: finding.source
+        };
         await chrome.storage.local.set({ [storageKey]: dataToStore });
 
         chrome.tabs.create({ url: `${viewerUrl}#${storageKey}` });

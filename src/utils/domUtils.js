@@ -81,8 +81,12 @@ export function sanitizeUrl(url) {
  * // Returns: 'cache-1699564800000-7x3m9k2p4'
  */
 export function generateStorageKey(prefix) {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return `${prefix}-${crypto.randomUUID()}`;
+  try {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return `${prefix}-${crypto.randomUUID()}`;
+    }
+  } catch (error) {
+    console.warn('[JS Recon Buddy] crypto.randomUUID failed, using fallback key generation:', error);
   }
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(2, 11);

@@ -45,6 +45,7 @@
         "src/utils/sourceMapParser.js",
         "src/utils/patterns.js",
         "src/utils/nextjsUtils.js",
+        "src/utils/domUtils.js",
         "src/utils/constants.js"
       ],
       "matches": [

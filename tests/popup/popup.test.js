@@ -322,6 +322,148 @@ describe('Popup UI and Logic', () => {
 
       expect(secretElement.textContent).not.toBe(longSecret);
     });
+
+    test('should validate element before rendering', () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
+
+      renderContent({}, null, true, true);
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[JS Recon Buddy] Invalid findingsList element');
+      consoleErrorSpy.mockRestore();
+    });
+
+    test('should sanitize finding data before rendering', () => {
+      const findingsList = document.getElementById('findings-list');
+      const maliciousData = {
+        status: 'complete',
+        results: [{
+          id: '<script>alert("xss")</script>',
+          secret: 'TEST_SECRET',
+          source: 'javascript:alert(1)',
+          description: '<img src=x onerror=alert(1)>'
+        }],
+        contentMap: {}
+      };
+
+      renderContent(maliciousData, findingsList, true, true);
+
+      expect(findingsList.querySelector('script')).toBeNull();
+      expect(findingsList.querySelector('img')).toBeNull();
+
+      expect(findingsList.querySelector('a')).toBeNull();
+      expect(findingsList.textContent).toContain('<script>alert("xss")</script>');
+      expect(findingsList.textContent).toContain('<img src=x onerror=alert(1)>');
+    });
+
+    test('should add rel="noopener noreferrer" to external links', () => {
+      const findingsList = document.getElementById('findings-list');
+      const storedData = {
+        status: 'complete',
+        results: [{
+          id: 'test',
+          secret: 'SECRET',
+          source: 'https://example.com/script.js'
+        }],
+        contentMap: { 'https://example.com/script.js': 'code' }
+      };
+
+      renderContent(storedData, findingsList, true, true);
+
+      const link = findingsList.querySelector('a');
+      expect(link.rel).toBe('noopener noreferrer');
+    });
+
+    test('should use clearElement instead of innerHTML', () => {
+      const findingsList = document.getElementById('findings-list');
+      findingsList.innerHTML = '<div>old content</div>';
+
+      renderContent(null, findingsList, false, true);
+
+      expect(findingsList.querySelector('div')).toBeTruthy();
+    });
+
+    test('should handle malformed finding objects gracefully', () => {
+      const findingsList = document.getElementById('findings-list');
+      const storedData = {
+        status: 'complete',
+        results: [
+          null,
+          undefined,
+          { id: 123 },
+          { secret: 'test' }
+        ],
+        contentMap: {}
+      };
+
+      expect(() => {
+        renderContent(storedData, findingsList, true, true);
+      }).not.toThrow();
+    });
+
+    test('should use generateStorageKey for View Source button', async () => {
+      const findingsList = document.getElementById('findings-list');
+      const storedData = {
+        status: 'complete',
+        results: [{
+          id: 'test',
+          secret: 'SECRET',
+          source: 'app.js'
+        }],
+        contentMap: { 'app.js': 'code' }
+      };
+
+      renderContent(storedData, findingsList, true, true);
+      const button = findingsList.querySelector('.btn-primary');
+
+      button.click();
+      await flushPromises();
+
+      const storageCall = chrome.storage.local.set.mock.calls[0][0];
+      const storageKey = Object.keys(storageCall)[0];
+
+      const uuidPattern = /^source-viewer-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+      const fallbackPattern = /^source-viewer-\d+-[a-z0-9]+$/;
+
+      const isValidKey = uuidPattern.test(storageKey) || fallbackPattern.test(storageKey);
+      expect(isValidKey).toBe(true);
+    });
+
+    test('should display source text if http-like source is invalid', () => {
+      const findingsList = document.getElementById('findings-list');
+      const storedData = {
+        status: 'complete',
+        results: [{
+          id: 'invalid-http-source',
+          secret: 'SECRET',
+          source: 'http//invalid-url-format'
+        }],
+        contentMap: {}
+      };
+
+      renderContent(storedData, findingsList, true, true);
+
+      const sourceSpan = findingsList.querySelector('.source span');
+
+      expect(sourceSpan.textContent).toBe('http//invalid-url-format');
+      expect(sourceSpan.querySelector('a')).toBeNull();
+    });
+
+    test('should not throw an error if findingsCountSpan is missing', () => {
+      document.body.innerHTML = `<div id="findings-list"></div>`;
+      const findingsList = document.getElementById('findings-list');
+
+      const storedData = {
+        status: 'complete',
+        results: [{ id: 'test', secret: 'secret', source: 'app.js' }],
+        contentMap: { 'app.js': 'code' }
+      };
+
+      expect(() => {
+        renderContent(storedData, findingsList, true, true);
+      }).not.toThrow();
+
+      expect(findingsList.querySelector('.finding-card')).not.toBeNull();
+    });
   });
 
   describe('initializePopup', () => {
@@ -479,6 +621,24 @@ describe('Popup UI and Logic', () => {
 
       consoleErrorSpy.mockRestore();
     });
+
+    test('should not have duplicate isScannable checks', async () => {
+      isScannableFunc.mockClear();
+
+      await initializePopup();
+      await flushPromises();
+
+      expect(isScannableFunc).toHaveBeenCalledTimes(1);
+    });
+
+    test('should not call loadAndRenderSecrets twice', async () => {
+      chrome.storage.local.get.mockClear();
+
+      await initializePopup();
+      await flushPromises();
+
+      expect(chrome.storage.local.get).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('storageChangeListener', () => {
@@ -495,6 +655,7 @@ describe('Popup UI and Logic', () => {
 
       storageChangeListener({ [pageKey]: newData }, 'local');
       await flushPromises();
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       expect(findingsList.textContent).toContain('new-finding');
     });
@@ -531,6 +692,26 @@ describe('Popup UI and Logic', () => {
       storageChangeListener({ 'jsrb_passive_scan|https://other.com': newData }, 'local');
       await flushPromises();
       expect(chrome.storage.local.get).not.toHaveBeenCalled();
+    });
+
+    test('should clear existing timeout if a new relevant change arrives quickly', async () => {
+      const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
+
+      await initializePopup();
+      await flushPromises();
+
+      const pageKey = 'jsrb_passive_scan|https://localhost';
+      const changeData = { newValue: { status: 'scanning' } };
+
+      storageChangeListener({ [pageKey]: changeData }, 'local');
+
+      storageChangeListener({ [pageKey]: changeData }, 'local');
+
+      expect(clearTimeoutSpy).toHaveBeenCalledTimes(1);
+
+      await flushPromises();
+
+      clearTimeoutSpy.mockRestore();
     });
   });
 
@@ -601,6 +782,23 @@ describe('Popup UI and Logic', () => {
       expect(chrome.storage.sync.get).not.toHaveBeenCalled();
 
       consoleWarnSpy.mockRestore();
+    });
+
+    test('should handle rapid tab switches correctly', async () => {
+      const tab1 = { id: 1, url: 'https://tab1.com' };
+      const tab2 = { id: 2, url: 'https://tab2.com' };
+
+      chrome.tabs.get
+        .mockResolvedValueOnce(tab1)
+        .mockResolvedValueOnce(tab2);
+
+      const promise1 = onActivatedListener({ tabId: 1 });
+      const promise2 = onActivatedListener({ tabId: 2 });
+
+      await Promise.all([promise1, promise2]);
+      await flushPromises();
+
+      expect(chrome.storage.local.get).toHaveBeenLastCalledWith('jsrb_passive_scan|https://tab2.com');
     });
   });
 });

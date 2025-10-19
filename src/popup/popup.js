@@ -60,9 +60,42 @@ export async function updateUIVisibility(isEnabled) {
 }
 
 /**
+ * @description Displays a message indicating the extension is installing/updating.
+ */
+function showInstallationMessage() {
+  const mainContent = document.getElementById('main-content');
+  const disabledContent = document.getElementById('disabled-content');
+  const scanButton = document.getElementById('scan-button');
+  const rescanPassiveButton = document.getElementById('rescan-passive-btn');
+  const settingsButton = document.getElementById('settings-btn');
+  const scanToggle = document.getElementById('scan-toggle');
+
+
+  if (mainContent) mainContent.style.display = 'none';
+  if (disabledContent) {
+    disabledContent.style.display = 'block';
+    disabledContent.innerHTML = '<p>Scanning is temporarily turned off. Wait for installation/update to finish.</p>';
+  }
+  if (scanButton) scanButton.disabled = true;
+  if (rescanPassiveButton) rescanPassiveButton.disabled = true;
+  if (settingsButton) settingsButton.disabled = true;
+  if (scanToggle) scanToggle.disabled = true;
+}
+
+/**
  * Main logic that runs when the popup's DOM is fully loaded.
  */
 export async function initializePopup() {
+  try {
+    const { extensionState } = await chrome.storage.local.get('extensionState');
+    if (extensionState === 'installing') {
+      showInstallationMessage();
+      return;
+    }
+  } catch (e) {
+    console.warn("[JS Recon Buddy] Could not get extension state:", e);
+  }
+
   const scanButton = document.getElementById('scan-button');
   const rescanPassiveButton = document.getElementById('rescan-passive-btn');
   const scanToggle = document.getElementById('scan-toggle');
@@ -141,6 +174,12 @@ let storageUpdateTimeout = null;
  * content dynamically without needing to reopen it.
  */
 export async function storageChangeListener(changes, areaName) {
+  if (areaName === 'local' && changes.extensionState) {
+    if (changes.extensionState.newValue === 'ready') {
+      initializePopup();
+      return;
+    }
+  }
   const findingsList = document.getElementById('findings-list');
   if (!activeTab) return;
   const pageKey = `${PASSIVE_SCAN_RESULT_PREFIX}|${activeTabUrl}`;

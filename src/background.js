@@ -1079,11 +1079,24 @@ chrome.runtime.onStartup.addListener(() => {
 
 chrome.runtime.onInstalled.addListener(async (details) => {
   if (details.reason === 'install' || details.reason === 'update') {
+    await chrome.storage.local.set({ extensionState: 'installing' });
     console.log("[JS Recon Buddy] Running installation/update tasks...");
     await migrateOldStorageFormat();
+    await chrome.storage.local.set({ extensionState: 'ready' });
     console.log("[JS Recon Buddy] Installation/update tasks completed.");
   }
 });
+(async () => {
+  try {
+    const { extensionState } = await chrome.storage.local.get('extensionState');
+    if (extensionState !== 'installing') {
+      await chrome.storage.local.set({ extensionState: 'ready' });
+    }
+  } catch (e) {
+    console.warn("[JS Recon Buddy] Could not check/set initial extension state:", e);
+    await chrome.storage.local.set({ extensionState: 'ready' });
+  }
+})();
 
 /**
  * Handles incoming messages from other parts of the extension.

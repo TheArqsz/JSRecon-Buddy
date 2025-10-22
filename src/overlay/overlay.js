@@ -31,6 +31,14 @@
     } = await import(
       chrome.runtime.getURL("src/utils/overlayUtils.js")
     );
+    const {
+      createElement,
+      createText,
+      createSpan,
+      createSecureLink,
+      sanitizeUrl,
+      generateStorageKey
+    } = await import(chrome.runtime.getURL("src/utils/domUtils.js"));
     const OVERLAY_ID = "bug-bounty-scanner-overlay";
     const CACHE_KEY_PREFIX = "scan_cache_";
     const CACHE_DURATION_MS = 2 * 60 * 60 * 1000;
@@ -293,13 +301,19 @@
 
     /**
      * A utility function to safely update the main content area of the overlay.
-     * @param {string} html - The HTML string to inject into the results container.
+     * @param {string | Node} content - The HTML string (for simple text) or DOM Node to inject.
      */
-    function updateOverlayContent(html) {
+    function updateOverlayContent(content) {
       const resultsContainer = shadowRoot.querySelector(
         `.scanner-overlay__results`,
       );
-      if (resultsContainer) resultsContainer.innerHTML = html;
+      if (resultsContainer) {
+        if (typeof content === 'string') {
+          resultsContainer.innerHTML = content;
+        } else if (content instanceof Node) {
+          resultsContainer.replaceChildren(content);
+        }
+      }
     }
 
     /**
@@ -331,47 +345,48 @@
         {
           key: "Subdomains",
           title: "[+] Subdomains",
-          formatter: (safe) =>
-            `<a href="https://${safe}" target="_blank">${safe}</a>`,
+          formatter: (safe, occ, raw) =>
+            `<a href="https://${raw}" target="_blank" rel="noopener noreferrer">${safe}</a>`,
           copySelector: ".finding-details > summary",
         },
         {
           key: "Endpoints",
           title: "[/] Endpoints & Paths",
-          formatter: (safe) => {
-            if (safe.startsWith("//")) {
-              return `<a href="https:${safe}" target="_blank">${safe}</a>`;
+          formatter: (safe, occ, raw) => {
+            let url;
+            if (raw.startsWith("//")) {
+              url = `https:${raw}`;
+            } else if (raw.startsWith("http")) {
+              url = raw;
+            } else {
+              try {
+                url = new URL(raw, location.origin).href;
+              } catch (e) { }
             }
-            if (safe.startsWith("http")) {
-              return `<a href="${safe}" target="_blank">${safe}</a>`;
-            }
-            return `<a href="${new URL(safe, location.origin).href}" target="_blank">${safe}</a>`;
+            const safeUrl = sanitizeUrl(url) || '#';
+            return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${safe}</a>`;
           },
           copySelector: ".finding-details > summary",
         },
         {
           key: "Potential DOM XSS Sinks",
           title: "[!] Potential DOM XSS Sinks",
-          formatter: (t) => `<span style="color:#ff8a80;">${t}</span>`,
+          formatter: (safe) => `<span style="color:#ff8a80;">${safe}</span>`,
           copySelector: ".finding-details > div div",
           copyModifier: "deduplicate-and-clean",
         },
         {
           key: "Potential Secrets",
           title: "[!] Potential Secrets",
-          formatter: (t) => {
-            return `
-          <code style="background:#333; color:#ffeb3b; padding:4px; border-radius:4px;">
-            ${t}
-          </code>
-          `;
-          },
+          formatter: (safe) =>
+            `<code style="background:#333; color:#ffeb3b; padding:4px; border-radius:4px;">${safe}</code>`,
           copySelector: ".finding-details > summary code",
         },
         {
           key: "Dependency Confusion",
           title: "[!] Potential Dependency Confusion",
-          formatter: (packageName) => `This private package is not on npmjs.com: <code>${escapeHTML(packageName)}</code>`,
+          formatter: (safe) =>
+            `This private package is not on npmjs.com: <code>${safe}</code>`,
           copySelector: ".finding-details > summary code",
         },
         {
@@ -397,52 +412,48 @@
                 fullUrl = new URL(rawFinding, sourceUrl).href;
               }
             } catch (e) {
-              console.warn(
-                "Could not create a valid URL for source map:",
-                finding,
-                "from source:",
-                sourceUrl,
-              );
+              console.warn("Could not create a valid URL for source map:", rawFinding, "from source:", sourceUrl);
             }
-
-            return `<a href="${fullUrl}" target="_blank" class="source-map-link" data-url="${fullUrl}">${safe}</a>`;
+            const safeUrl = sanitizeUrl(fullUrl) || '#';
+            return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="source-map-link" data-url="${safeUrl}">${safe}</a>`;
           },
           copySelector: ".finding-details > summary > a",
         },
         {
           key: "External Scripts",
           title: "[S] External Scripts",
-          formatter: (safeKey) => {
-            const absoluteUrl = new URL(safeKey, window.location.origin).href;
-            return `<a href="${absoluteUrl}" class="script-link" data-source-key="${safeKey}">${safeKey}</a>`
-          },
+          formatter: (s) => s,
           copySelector: "details > ul > li > a",
         },
         {
           key: "Inline Scripts",
           title: "[IS] Inline Scripts",
-          formatter: (safeKey) => `<a href="#" class="script-link" data-source-key="${safeKey}">${safeKey}</a>`,
+          formatter: (s) => s,
         }
       ];
-      const sectionsHTML = sectionConfig
-        .map(({ key, title, formatter, copySelector, copyModifier }) =>
-          renderSection(
-            results[key],
-            title,
-            formatter,
-            copySelector,
-            copyModifier,
-            contentMap
-          ),
-        )
-        .join("");
+      const fragment = document.createDocumentFragment();
+      sectionConfig.forEach(({ key, title, formatter, copySelector, copyModifier }) => {
+        const sectionNode = renderSection(
+          results[key],
+          title,
+          formatter,
+          copySelector,
+          copyModifier,
+          contentMap
+        );
+        if (sectionNode) {
+          fragment.appendChild(sectionNode);
+        }
+      }
+      );
+
       const totalFindings = Object.values(results).reduce(
-        (sum, map) => sum + map.size,
+        (sum, map) => sum + (map?.size || 0),
         0,
       );
 
       updateOverlayContent(
-        totalFindings > 0 ? sectionsHTML : "<h2>No findings. All clear!</h2>",
+        totalFindings > 0 ? fragment : "<h2>No findings. All clear!</h2>",
       );
 
       attachEventListeners(results, contentMap);
@@ -465,9 +476,12 @@
 
           const sourceKey = target.dataset.sourceKey;
           const scriptContent = contentMap[sourceKey];
-          if (!scriptContent) return;
+          if (!scriptContent) {
+            console.warn('[JS Recon Buddy] Content not found for:', sourceKey);
+            return;
+          }
 
-          const storageKey = `source-viewer-inline-${Date.now()}`;
+          const storageKey = generateStorageKey('source-viewer-inline');
           const dataToStore = { content: scriptContent, source: sourceKey };
           await chrome.storage.local.set({ [storageKey]: dataToStore });
 
@@ -592,16 +606,24 @@
       const existingModal = document.getElementById("context-modal");
       if (existingModal) existingModal.remove();
 
-      const modal = document.createElement("div");
+      const modal = createElement("div");
       modal.id = "context-modal";
-      modal.innerHTML = `
-    <div class="modal-content">
-      <span class="modal-close">&times;</span>
-      <p>Context Snippet:</p>
-      <pre><code></code></pre>
-    </div>
-    `;
-      modal.querySelector("code").textContent = context;
+
+      const modalContent = createElement("div", "modal-content");
+
+      const closeButton = createElement("span", "modal-close");
+      closeButton.innerHTML = "&times;";
+
+      const title = createElement("p", "", "Context Snippet:");
+
+      const pre = createElement("pre");
+      const code = createElement("code", "", context);
+
+      pre.appendChild(code);
+      modalContent.appendChild(closeButton);
+      modalContent.appendChild(title);
+      modalContent.appendChild(pre);
+      modal.appendChild(modalContent);
 
       shadowRoot.appendChild(modal);
 
@@ -627,10 +649,14 @@
 
       const filePaths = Object.keys(sources);
       const fileTreeHTML = generateFileTreeHTML(filePaths);
+
+      const safeUrl = sanitizeUrl(sourceMapUrl) || "#";
+      const safeFilename = escapeHTML(sourceMapUrl.split('/').pop() || "source map");
+
       modal.innerHTML = `
     <div class="modal-content-source-viewer">
       <span class="modal-close">&times;</span>
-      <p>Reconstructed ${filePaths.length} sources from <a target="_blank" href="${sourceMapUrl}">${sourceMapUrl.split('/').pop()}</a>:</p>
+      <p>Reconstructed ${filePaths.length} sources from <a target="_blank" href="${safeUrl}" rel="noopener noreferrer">${safeFilename}</a>:</p>
       <div class="source-viewer">
         <div class="file-browser">${fileTreeHTML}</div>
         <div class="code-viewer">
@@ -767,7 +793,7 @@
      * @param {function} formatter - A function to format the display of each finding.
      * @param {string} selector - The CSS selector for the "Copy Section" button.
      * @param {string} [copyModifier] - An optional modifier for the copy behavior.
-     * @returns {string} The HTML string for the entire section.
+     * @returns {HTMLDetailsElement | null} The HTML details element, or null if no findings.
      */
     function renderSection(
       findingsMap,
@@ -778,7 +804,30 @@
       contentMap
     ) {
       if (!findingsMap || findingsMap.size === 0) return "";
-      let itemsHTML = "";
+
+      const details = createElement("details");
+      const summary = createElement("summary");
+
+      summary.appendChild(createSpan(`${title} (${findingsMap.size})`));
+
+      const copySelector = selector || ".finding-details > summary";
+
+      if (!title.includes("Inline Scripts")) {
+        const copyButton = createElement(
+          "button",
+          "btn btn--copy-section",
+          "Copy"
+        );
+        copyButton.dataset.copySelector = copySelector;
+        if (copyModifier) {
+          copyButton.dataset.copyModifier = copyModifier;
+        }
+        summary.appendChild(copyButton);
+      }
+
+      details.appendChild(summary);
+
+      const ul = createElement("ul");
 
       if (title.includes("[!] Potential Secrets")) {
         const findingsByRule = {};
@@ -792,37 +841,63 @@
 
         for (const ruleId in findingsByRule) {
           const subfindings = findingsByRule[ruleId];
-          itemsHTML += `<div class="sub-section"><details><summary>${ruleId} (${subfindings.length})</summary><ul>`;
+          const subDiv = createElement("div", "sub-section");
+          const subDetails = createElement("details");
+          const subSummary = createElement(
+            "summary",
+            "",
+            `${escapeHTML(ruleId)} (${subfindings.length})`
+          );
+          const subUl = createElement("ul");
+
           subfindings.forEach(({ item, occurrences }) => {
-            itemsHTML += renderListItem(item, occurrences, formatter, contentMap);
+            subUl.appendChild(renderListItem(item, occurrences, formatter, contentMap));
           });
-          itemsHTML += `</ul></details></div>`;
+
+          subDetails.appendChild(subSummary);
+          subDetails.appendChild(subUl);
+          subDiv.appendChild(subDetails);
+          ul.appendChild(subDiv);
         }
-      } else if (title.includes("External Scripts") || title.includes("Inline Scripts")) {
+      } else if (title.includes("External Scripts")) {
         findingsMap.forEach((_, item) => {
+          const li = createElement("li");
           const safeItem = escapeHTML(item);
-          const renderedItem = formatter ? formatter(safeItem) : safeItem;
-          itemsHTML += `<li>${renderedItem}</li>`;
+          let absoluteUrl;
+          try {
+            absoluteUrl = new URL(item, window.location.origin).href;
+          } catch (e) {
+          }
+
+          const safeUrl = sanitizeUrl(absoluteUrl);
+          if (safeUrl) {
+            const link = createElement("a", "script-link", safeItem);
+            link.href = safeUrl;
+            link.dataset.sourceKey = item;
+            li.appendChild(link);
+          } else {
+            li.textContent = safeItem;
+          }
+          ul.appendChild(li);
+        });
+      } else if (title.includes("Inline Scripts")) {
+        findingsMap.forEach((_, item) => {
+          const li = createElement("li");
+          const safeItem = escapeHTML(item);
+          const link = createElement("a", "script-link", safeItem);
+          link.href = "#";
+          link.dataset.sourceKey = item;
+          li.appendChild(link);
+          ul.appendChild(li);
         });
       } else {
         findingsMap.forEach((occurrences, item) => {
-          itemsHTML += renderListItem(item, occurrences, formatter, contentMap);
+          ul.appendChild(renderListItem(item, occurrences, formatter, contentMap));
         });
       }
 
-      const copySelector = selector || ".finding-details > summary";
-      const modifierAttribute = copyModifier
-        ? `data-copy-modifier="${copyModifier}"`
-        : "";
-
-      const copyButtonHTML = (!title.includes("Inline Scripts"))
-        ? `<button class="btn btn--copy-section" data-copy-selector="${copySelector}" ${modifierAttribute}>Copy</button>`
-        : '';
-      const summaryHTML = `
-      <span>${title} (${findingsMap.size})</span>
-      ${copyButtonHTML}
-    `;
-      return `<details><summary>${summaryHTML}</summary><ul>${itemsHTML}</ul></details>`;
+      details.appendChild(ul);
+      return details;
     }
 
     /**
@@ -831,53 +906,78 @@
      * @param {Array<object>} occurrences - An array of objects detailing where the item was found.
      * @param {function} formatter - The formatting function for the item.
      * @param {object} contentMap - The map of source content.
-     * @returns {string} The HTML string for the list item.
+     * @returns {HTMLLIElement} The HTML list item element.
      */
     function renderListItem(item, occurrences, formatter, contentMap) {
       const safeItem = escapeHTML(item);
       const renderedItem = formatter
         ? formatter(safeItem, occurrences, item)
         : safeItem;
-      let occurrencesHTML = "";
+
+      const li = createElement("li");
+      const details = createElement("details", "finding-details");
+      const summary = createElement("summary");
+      summary.innerHTML = renderedItem;
+
+      const occurrencesContainer = createElement("div");
+      occurrencesContainer.style.cssText = "font-size:.85em;color:#999;padding-left:15px;margin-top:5px";
+
       const uniqueOccurrences = new Map(
         occurrences.map((occ) => [occ.source + '@' + occ.index, occ]),
       );
 
       uniqueOccurrences.forEach(({ source, index, secretLength, line, column }) => {
+        const occurrenceDiv = createElement("div");
         const isLocal =
           source.startsWith("Inline Script") || source === "Main HTML Document";
         const isURL = source.startsWith("http");
-        let sourceHTML = `↳ ${escapeHTML(source)}`;
+
+        occurrenceDiv.appendChild(createText("↳ "));
+
         if (isURL) {
-          sourceHTML = `↳ <a href="${source}" target="_blank">${escapeHTML(source)}</a><span class="finding-location">:${line}:${column}</span>`;
+          const link = createSecureLink(source, escapeHTML(source));
+          if (link) {
+            occurrenceDiv.appendChild(link);
+          } else {
+            occurrenceDiv.appendChild(createText(escapeHTML(source)));
+          }
+          occurrenceDiv.appendChild(createSpan(`:${line}:${column}`, "finding-location"));
         } else if (isLocal) {
-          sourceHTML = `↳ <span class="clickable-source"
-            data-source="${escapeHTML(source)}"
-            data-index="${index}"
-            data-length="${secretLength}">${escapeHTML(source)} (click to view)</span><span class="finding-location"> [Line: ${line} & Col: ${column}]</span>`;
+          const span = createSpan(
+            `${escapeHTML(source)} (click to view)`,
+            "clickable-source"
+          );
+          span.dataset.source = source;
+          span.dataset.index = index;
+          span.dataset.length = secretLength || (item ? item.length : 10);
+          occurrenceDiv.appendChild(span);
+          occurrenceDiv.appendChild(
+            createSpan(` [Line: ${line} & Col: ${column}]`, "finding-location")
+          );
+        } else {
+          occurrenceDiv.appendChild(createText(escapeHTML(source)));
         }
-        occurrencesHTML += `<div>${sourceHTML}</div>`;
+
+        occurrencesContainer.appendChild(occurrenceDiv);
+
         if (!isLocal) {
           const fullCode = contentMap[source];
-          if (fullCode) {
+          if (fullCode && typeof fullCode === 'string') {
             const start = Math.max(0, index - 40);
-            const end = Math.min(fullCode.length, index + secretLength + 40);
+            const end = Math.min(fullCode.length, index + (secretLength || item.length) + 40);
             const context = `... ${fullCode.substring(start, end).replace(/\n/g, " ")} ...`;
-            occurrencesHTML += `<code class="context-snippet">${escapeHTML(context)}</code>`;
+
+            const code = createElement("code", "context-snippet", context);
+            occurrencesContainer.appendChild(code);
           }
         }
       });
 
-      return `
-    <li>
-      <details class="finding-details">
-        <summary>${renderedItem}</summary>
-        <div style="font-size:.85em;color:#999;padding-left:15px;margin-top:5px">
-          ${occurrencesHTML}
-        </div>
-      </details>
-    </li>
-  `;
+      details.appendChild(summary);
+      details.appendChild(occurrencesContainer);
+      li.appendChild(details);
+
+      return li;
     }
 
     runScanner();

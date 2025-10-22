@@ -1,3 +1,11 @@
+## [1.16.4](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.16.3...v1.16.4) (2025-10-22)
+
+
+### Bug Fixes
+
+* Implemented a single AbortController to manage proper event management ([caac648](https://github.com/TheArqsz/JSRecon-Buddy/commit/caac64837d9ec4f5a81fa12d9546380f95bb19c1))
+* Replaced raw html element creation in the overlay with domUtils ([cfaac0a](https://github.com/TheArqsz/JSRecon-Buddy/commit/cfaac0a751c75171de5b9ba5bc23d304d49fa0d3))
+
 ## [1.16.3](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.16.2...v1.16.3) (2025-10-19)
 
 

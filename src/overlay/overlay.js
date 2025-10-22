@@ -45,6 +45,8 @@
     const MAX_CACHE_SIZE_BYTES = 30 * 1024 * 1024;
 
     let shadowRoot = null;
+    let mainAbortController = new AbortController();
+
     const DEFAULT_PARAMETERS = [
       "redirect",
       "url",
@@ -87,6 +89,9 @@
      * @returns {Promise<void>}
      */
     async function runScanner(forceRescan = false) {
+      mainAbortController.abort();
+      mainAbortController = new AbortController();
+
       const existingOverlay = document.getElementById(OVERLAY_ID);
 
       if (existingOverlay) {
@@ -267,15 +272,19 @@
         .then(async (html) => {
           shadowRoot.innerHTML = `<style>@import "${cssURL}";</style>${html}`;
 
-          const closeOverlay = () => {
-            shadowHost.remove();
-            document.removeEventListener("keydown", handleEsc);
-          };
           const handleEsc = (event) => {
             if (event.key === "Escape") closeOverlay();
           };
+          const closeOverlay = () => {
+            mainAbortController.abort();
+            shadowHost.remove();
+            document.removeEventListener("keydown", handleEsc);
+          };
+
           shadowRoot.querySelector("#close-button").onclick = closeOverlay;
-          document.addEventListener("keydown", handleEsc);
+          document.addEventListener("keydown", handleEsc, {
+            signal: mainAbortController.signal
+          });
 
           const rescanButton = shadowRoot.querySelector("#rescan-button");
           if (rescanButton) {
@@ -747,9 +756,6 @@
         return;
       }
 
-      exportController.abort();
-      exportController = new AbortController();
-
       exportButton.addEventListener(
         "click",
         () => {
@@ -782,7 +788,7 @@
           downloadAnchorNode.click();
           downloadAnchorNode.remove();
         },
-        { signal: exportController.signal },
+        { signal: mainAbortController.signal },
       );
     }
 

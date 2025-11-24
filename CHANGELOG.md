@@ -1,3 +1,10 @@
+## [1.17.2](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.17.1...v1.17.2) (2025-11-24)
+
+
+### Bug Fixes
+
+* **overlay:** prevent DOM XSS in source map file tree generation ([e830503](https://github.com/TheArqsz/JSRecon-Buddy/commit/e8305034139293a5474354e645cd842ab767a786))
+
 ## [1.17.1](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.17.0...v1.17.1) (2025-11-24)
 
 

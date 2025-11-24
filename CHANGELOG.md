@@ -1,3 +1,15 @@
+## [1.17.0](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.16.4...v1.17.0) (2025-11-24)
+
+
+### Features
+
+* Added .map finding for existing js scripts as requested in [#7](https://github.com/TheArqsz/JSRecon-Buddy/issues/7) ([5d46dcc](https://github.com/TheArqsz/JSRecon-Buddy/commit/5d46dccb7a9d459acc368e0b3fc7f63e141ed124))
+
+
+### Bug Fixes
+
+* Fixed wrong status of async requests ([f46e3de](https://github.com/TheArqsz/JSRecon-Buddy/commit/f46e3def637cfc0eb7a3b16fae90aa0455e91e25))
+
 ## [1.16.4](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.16.3...v1.16.4) (2025-10-22)
 
 

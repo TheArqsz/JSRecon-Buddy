@@ -1,3 +1,10 @@
+## [1.17.3](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.17.2...v1.17.3) (2025-11-24)
+
+
+### Bug Fixes
+
+* **background:** unify throttledFetch signature for privacy hardening ([c9445ef](https://github.com/TheArqsz/JSRecon-Buddy/commit/c9445ef8853079277dda1e8e76fc8ae696e3bbf2))
+
 ## [1.17.2](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.17.1...v1.17.2) (2025-11-24)
 
 

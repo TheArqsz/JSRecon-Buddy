@@ -64,6 +64,7 @@ export function saveOptions() {
   const showTitleNotification = !document.getElementById('disable-title-notification').checked;
   const passiveScanningDisabled = document.getElementById('disable-passive-scanning').checked;
   const isNPMDependencyScanEnabled = document.getElementById('enable-dependency-scan').checked;
+  const isSourceMapGuessingEnabled = document.getElementById('enable-sourcemap-guessing').checked;
 
   const excludedRuleCheckboxes = document.querySelectorAll('#rules-list-container input[type="checkbox"]:checked');
   const excludedRuleIds = Array.from(excludedRuleCheckboxes).map(cb => cb.value);
@@ -72,6 +73,7 @@ export function saveOptions() {
     showTitleNotification: showTitleNotification,
     isPassiveScanningEnabled: !passiveScanningDisabled,
     isNPMDependencyScanEnabled: isNPMDependencyScanEnabled,
+    isSourceMapGuessingEnabled: isSourceMapGuessingEnabled,
     excludedDomains: excludedDomains,
     excludedRuleIds: excludedRuleIds
   }, () => {
@@ -94,12 +96,14 @@ export function restoreOptions() {
     showTitleNotification: true,
     isPassiveScanningEnabled: true,
     isNPMDependencyScanEnabled: false,
+    isSourceMapGuessingEnabled: false,
     excludedDomains: '',
     excludedRuleIds: []
   }, (items) => {
     document.getElementById('disable-title-notification').checked = !items.showTitleNotification;
     document.getElementById('disable-passive-scanning').checked = !items.isPassiveScanningEnabled;
     document.getElementById('enable-dependency-scan').checked = items.isNPMDependencyScanEnabled;
+    document.getElementById('enable-sourcemap-guessing').checked = items.isSourceMapGuessingEnabled;
 
     document.getElementById('excluded-domains').value = items.excludedDomains;
     populateRulesList(items.excludedRuleIds);

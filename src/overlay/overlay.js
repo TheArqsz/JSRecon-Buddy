@@ -157,12 +157,58 @@
 
         const PATTERNS = getPatterns(parameters);
 
+        const { isSourceMapGuessingEnabled } = await chrome.storage.sync.get({
+          isSourceMapGuessingEnabled: false
+        });
+
         const { results, contentMap } = await processScriptsAsync(
           allScripts,
           PATTERNS,
           { shannonEntropy, getLineAndColumn, getDomainInfo },
           onProgressCallback
         );
+
+        if (isSourceMapGuessingEnabled) {
+          progressText.textContent = `Guessing source maps...`;
+
+          const candidates = [];
+          Object.keys(contentMap).forEach(key => {
+            if (key.startsWith('http') && key.endsWith('.js')) {
+              candidates.push(key + '.map');
+            }
+          });
+
+          const existingMaps = results['Source Maps'] ? Array.from(results['Source Maps'].keys()) : [];
+          const uniqueCandidates = candidates.filter(url => !existingMaps.includes(url));
+
+          if (uniqueCandidates.length > 0) {
+            const foundMaps = await chrome.runtime.sendMessage({
+              type: 'PROBE_SOURCE_MAPS',
+              urls: uniqueCandidates
+            });
+
+            if (foundMaps && foundMaps.length > 0) {
+              if (!results['Source Maps']) {
+                results['Source Maps'] = new Map();
+              }
+
+              foundMaps.forEach(mapUrl => {
+                const syntheticOccurrence = {
+                  source: 'Heuristic (Guessed)',
+                  ruleId: 'guessed-source-map',
+                  index: 0,
+                  secretLength: 0,
+                  line: 0,
+                  column: 0
+                };
+
+                if (!results['Source Maps'].has(mapUrl)) {
+                  results['Source Maps'].set(mapUrl, [syntheticOccurrence]);
+                }
+              });
+            }
+          }
+        }
 
         // Special handling for Next.js applications
         const { manifestUrl } = extractNextJsData(mainHTML, window.location.href);

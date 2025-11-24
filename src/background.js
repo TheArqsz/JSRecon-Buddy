@@ -244,12 +244,13 @@ async function migrateOldStorageFormat() {
  * - 'response': Resolves with the full `Response` object to access status codes and headers.
  * @returns {Promise<string|Response|null>} A promise that resolves with the specified response type, or null on error.
  */
-export function throttledFetch(url, options = { responseType: 'text' }) {
+export function throttledFetch(url, options = { responseType: 'text', method: 'GET' }) {
   return new Promise((resolve) => {
     fetchQueue.push({
       url,
       resolve,
-      responseType: options.responseType
+      responseType: options.responseType || 'text',
+      method: options.method || 'GET'
     });
     processFetchQueue();
   });
@@ -266,10 +267,14 @@ function processFetchQueue() {
   }
 
   activeFetches++;
-  const { url, resolve, responseType } = fetchQueue.shift();
+  const { url, resolve, responseType, method } = fetchQueue.shift();
 
-  fetch(url)
+  fetch(url, { method: method })
     .then(response => {
+      if (method === 'HEAD') {
+        return response.ok;
+      }
+
       switch (responseType) {
         case 'text':
           if (!response.ok) {
@@ -1244,6 +1249,20 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       } catch (error) {
         sendResponse({ status: 'error', message: error.message });
       }
+    })();
+    return true;
+  }
+
+  if (request.type === 'PROBE_SOURCE_MAPS') {
+    (async () => {
+      const promises = request.urls.map(async (url) => {
+        const exists = await throttledFetch(url, { method: 'HEAD' });
+        return exists ? url : null;
+      });
+
+      const results = await Promise.all(promises);
+      const validMaps = results.filter(url => url !== null);
+      sendResponse(validMaps);
     })();
     return true;
   }

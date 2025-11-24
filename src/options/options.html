@@ -49,6 +49,17 @@
 
         <div class="form-group">
             <div class="label-with-tooltip">
+                <legend for="enable-sourcemap-guessing">
+                    <input type="checkbox" id="enable-sourcemap-guessing">
+                    Enable Source Map Guessing
+                </legend>
+                <span class="tooltip-icon"
+                    title="Automatically attempts to find source maps by appending '.map' to discovered JavaScript files, even if they aren't explicitly linked.">?</span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <div class="label-with-tooltip">
                 <legend for="excluded-domains">Exclude Domains/Paths (one per line)</legend>
                 <span class="tooltip-icon"
                     title="Use /your-regex/ for regular expressions. Otherwise, it's a simple text match.">?</span>

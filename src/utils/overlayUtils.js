@@ -1,4 +1,5 @@
 import { MAX_CONTENT_SIZE_BYTES } from './constants.js';
+import { escapeHTML } from './coreUtils.js';
 
 /**
  * Copies text to the clipboard, using a fallback for insecure (HTTP) pages.
@@ -439,14 +440,16 @@ export function generateFileTreeHTML(filePaths) {
     if (entries.length === 0) return '';
 
     const listItemsHtml = entries.map(([name, children]) => {
+      const safeName = escapeHTML(name);
       const currentPath = path ? `${path}/${name}` : name;
+      const safePath = escapeHTML(currentPath);
       const hasChildren = Object.keys(children).length > 0;
       let itemHtml;
 
       if (hasChildren) {
-        itemHtml = `<details open><summary><span class="folder-icon">🗀</span> ${name}</summary>${createHTML(children, currentPath)}</details>`;
+        itemHtml = `<details open><summary><span class="folder-icon">🗀</span> ${safeName}</summary>${createHTML(children, currentPath)}</details>`;
       } else {
-        itemHtml = `<a href="#" class="file-link" data-filename="${currentPath}"><span class="file-icon">🖹</span> ${name}</a>`;
+        itemHtml = `<a href="#" class="file-link" data-filename="${safePath}"><span class="file-icon">🖹</span> ${safeName}</a>`;
       }
       return `<li>${itemHtml}</li>`;
     }).join('');

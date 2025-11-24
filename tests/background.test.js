@@ -450,6 +450,35 @@ describe('Background Script Logic', () => {
       expect(global.fetch).not.toHaveBeenCalled();
       expect(sendResponse).toHaveBeenCalledWith([]);
     });
+
+    test('should handle PROBE_SOURCE_MAPS message and return valid maps', async () => {
+      const request = {
+        type: 'PROBE_SOURCE_MAPS',
+        urls: ['https://example.com/valid.js.map', 'https://example.com/missing.js.map']
+      };
+      const sendResponse = jest.fn();
+
+      global.fetch.mockImplementation(async (url, options) => {
+        if (url === 'https://example.com/valid.js.map' && options.method === 'HEAD') {
+          return { ok: true };
+        }
+        return { ok: false };
+      });
+
+      jest.useFakeTimers();
+
+      const isAsync = messageListener(request, {}, sendResponse);
+
+      await jest.runAllTimersAsync();
+
+      expect(global.fetch).toHaveBeenCalledWith('https://example.com/valid.js.map', { method: 'HEAD' });
+      expect(global.fetch).toHaveBeenCalledWith('https://example.com/missing.js.map', { method: 'HEAD' });
+
+      expect(sendResponse).toHaveBeenCalledWith(['https://example.com/valid.js.map']);
+      expect(isAsync).toBe(true);
+
+      jest.useRealTimers();
+    });
   });
 
   describe('Caching and State Logic', () => {
@@ -515,7 +544,7 @@ describe('Background Script Logic', () => {
       jest.runAllTimers();
       const result = await promise;
 
-      expect(global.fetch).toHaveBeenCalledWith('https://example.com/script.js');
+      expect(global.fetch).toHaveBeenCalledWith('https://example.com/script.js', { "method": "GET" });
       expect(result).toBe('test content');
     });
 
@@ -551,6 +580,25 @@ describe('Background Script Logic', () => {
       await jest.advanceTimersByTimeAsync(200);
 
       expect(global.fetch).toHaveBeenCalledTimes(5);
+    });
+
+    test('should support HEAD method in throttledFetch and return boolean', async () => {
+      await loadBackgroundScript();
+
+      const mockResponse = { ok: true };
+      global.fetch.mockResolvedValue(mockResponse);
+
+      const throttledFetch = (await import('../src/background.js')).throttledFetch;
+
+      const promise = throttledFetch('https://example.com/check.map', { method: 'HEAD' });
+
+      jest.runAllTimers();
+
+      const result = await promise;
+
+      expect(global.fetch).toHaveBeenCalledWith('https://example.com/check.map', { method: 'HEAD' });
+
+      expect(result).toBe(true);
     });
   });
 

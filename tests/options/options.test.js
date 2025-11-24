@@ -21,6 +21,7 @@ describe('Options Page Logic', () => {
       <input type="checkbox" id="disable-title-notification">
       <input type="checkbox" id="disable-passive-scanning">
       <input type="checkbox" id="enable-dependency-scan">
+      <input type="checkbox" id="enable-sourcemap-guessing">
       <textarea id="excluded-domains"></textarea>
       <div id="validation-error"></div>
       <input id="rule-search">
@@ -40,6 +41,7 @@ describe('Options Page Logic', () => {
         showTitleNotification: true,
         isPassiveScanningEnabled: true,
         isNPMDependencyScanEnabled: false,
+        isSourceMapGuessingEnabled: false,
         excludedDomains: '',
         excludedRuleIds: []
       });
@@ -52,6 +54,7 @@ describe('Options Page Logic', () => {
         showTitleNotification: false,
         isPassiveScanningEnabled: false,
         isNPMDependencyScanEnabled: true,
+        isSourceMapGuessingEnabled: true,
         excludedDomains: 'google.com\n/github\\.com/',
         excludedRuleIds: ['aws-key']
       };
@@ -65,6 +68,7 @@ describe('Options Page Logic', () => {
       expect(document.getElementById('disable-title-notification').checked).toBe(true);
       expect(document.getElementById('disable-passive-scanning').checked).toBe(true);
       expect(document.getElementById('enable-dependency-scan').checked).toBe(true);
+      expect(document.getElementById('enable-sourcemap-guessing').checked).toBe(true);
 
       expect(document.getElementById('excluded-domains').value).toBe(mockSettings.excludedDomains);
 
@@ -83,6 +87,7 @@ describe('Options Page Logic', () => {
       document.getElementById('disable-title-notification').checked = false;
       document.getElementById('disable-passive-scanning').checked = false;
       document.getElementById('enable-dependency-scan').checked = true;
+      document.getElementById('enable-sourcemap-guessing').checked = true;
 
       document.getElementById('excluded-domains').value = 'youtube.com\n/valid-regex/';
 
@@ -93,6 +98,7 @@ describe('Options Page Logic', () => {
           showTitleNotification: true,
           isPassiveScanningEnabled: true,
           isNPMDependencyScanEnabled: true,
+          isSourceMapGuessingEnabled: true,
           excludedDomains: 'youtube.com\n/valid-regex/',
           excludedRuleIds: ['google-api', 'slack-token']
         },
@@ -181,6 +187,7 @@ describe('Options Page Logic', () => {
             <input type="checkbox" id="disable-title-notification">
             <input type="checkbox" id="disable-passive-scanning">
             <input type="checkbox" id="enable-dependency-scan">
+            <input type="checkbox" id="enable-sourcemap-guessing">
             <textarea id="excluded-domains"></textarea>
             <div id="validation-error"></div>
             <input id="rule-search">

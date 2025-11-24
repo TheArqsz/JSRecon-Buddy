@@ -1,3 +1,15 @@
+## [1.17.1](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.17.0...v1.17.1) (2025-11-24)
+
+
+### Bug Fixes
+
+* **overlay:** prevent browser freeze on large scripts and reduce memory usage ([e7a9a70](https://github.com/TheArqsz/JSRecon-Buddy/commit/e7a9a70a765d404ab068646bf0ad81f3a00267e1))
+
+
+### Performance Improvements
+
+* **background:** optimize memory footprint of passive scan ([6e4a55a](https://github.com/TheArqsz/JSRecon-Buddy/commit/6e4a55af6fdde9abb1d9f27d1eda5b38a2e24df8))
+
 ## [1.17.0](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.16.4...v1.17.0) (2025-11-24)
 
 

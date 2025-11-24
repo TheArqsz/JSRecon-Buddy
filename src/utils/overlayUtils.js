@@ -1,3 +1,5 @@
+import { MAX_CONTENT_SIZE_BYTES } from './constants.js';
+
 /**
  * Copies text to the clipboard, using a fallback for insecure (HTTP) pages.
  * @param {string} textToCopy The text to be copied.
@@ -301,7 +303,7 @@ export async function processScriptsAsync(scripts, patterns, dependencies, onPro
    */
   const processMatch = (match, rule, category, code, source) => {
     const finding = match[rule.group || 0]?.trim();
-    if (!finding) return;
+    if (!finding) return false;
 
     const validationMap = {
       Subdomains: () => isValidSubdomain(finding),
@@ -310,7 +312,7 @@ export async function processScriptsAsync(scripts, patterns, dependencies, onPro
     };
 
     if (validationMap[category] && !validationMap[category]()) {
-      return;
+      return false;
     }
 
     if (!results[category].has(finding)) {
@@ -328,6 +330,7 @@ export async function processScriptsAsync(scripts, patterns, dependencies, onPro
     };
 
     results[category].get(finding).push(occurrence);
+    return true;
   };
 
   let processedCount = 0;
@@ -335,19 +338,43 @@ export async function processScriptsAsync(scripts, patterns, dependencies, onPro
 
   for (const script of scripts) {
     if (!script.code) continue;
+    const contentSize = new Blob([script.code]).size;
+    if (contentSize > MAX_CONTENT_SIZE_BYTES) {
+      console.warn(`[JS Recon Buddy] Skipping large file: ${script.source}`);
+      processedCount++;
+      if (onProgress) onProgress(processedCount, totalScripts);
+      continue;
+    }
 
     const decodedCode = decodeText(script.code);
-    contentMap[script.source] = decodedCode;
+
+    let hasFindings = false;
 
     for (const category in patterns) {
       const rules = Array.isArray(patterns[category]) ? patterns[category] : [patterns[category]];
       for (const rule of rules) {
         if (!rule.regex) continue;
-        for (const match of decodedCode.matchAll(rule.regex)) {
-          processMatch(match, rule, category, decodedCode, script.source);
+
+        try {
+          for (const match of decodedCode.matchAll(rule.regex)) {
+            const added = processMatch(match, rule, category, decodedCode, script.source);
+            if (added) hasFindings = true;
+          }
+        } catch (e) {
+          console.warn(`[JS Recon Buddy] Regex error on ${script.source}:`, e);
         }
       }
     }
+
+    const isInline = script.source.startsWith('Inline Script') || script.source === "Main HTML Document";
+
+    if (hasFindings || isInline) {
+      contentMap[script.source] = decodedCode;
+    } else {
+      contentMap[script.source] = null;
+    }
+
+    script.code = null;
 
     processedCount++;
     if (onProgress) {

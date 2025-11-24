@@ -98,7 +98,7 @@ The scanner uses a set of regex patterns to identify and categorize potential se
 > You can test this feature by cloning this repository, opening the `assets/dependency-confusion-test/index.html` file in your browser, and running an on-demand scan.
 
 - Interesting Parameters - flags potentially vulnerable URL parameters (e.g., redirect, debug, url).
-- Source Maps - finds links to source maps which can expose original source code.
+- Source Maps - finds links to source maps which can expose original source code. Can optionally guess the location of source maps for discovered JavaScript files even if they aren't explicitly linked.
 
 > [!NOTE]
 > If it is a valid source map, the extension tries to deconstruct source files based on data there
@@ -281,6 +281,8 @@ You can customize the extension's behavior by opening the settings page. Access 
 
 > [!WARNING]
 > This makes requests to a public NPM registry.
+
+- Enable Source Map Guessing - an opt-in feature for the on-demand scan. When enabled, the extension attempts to find source maps by appending `.map` to the URL of every discovered JavaScript file (e.g. `script.js` -> `script.js.map`). Useful for finding maps that developers forgot to remove but didn't link.
 
 - Exclude Domains/Paths - this feature allows you to prevent the extension from scanning specific websites. You can add one entry per line:
 

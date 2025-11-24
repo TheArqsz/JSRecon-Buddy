@@ -1,0 +1,13 @@
+{
+  "version": 3,
+  "file": "ghost-script.js",
+  "sourceRoot": "",
+  "sources": [
+    "src/original-ghost.js"
+  ],
+  "names": [],
+  "mappings": "AAAA,IAAA,MAAA,CAAA,cAAA,CAAA,OAAA,EAAA,YAAA,EAAA;AAAA,EAAA,KAAA,EAAA;AAAA,CAAA,CAAA,CAAA",
+  "sourcesContent": [
+    "// This is the reconstructed source code!\n\nconst API_KEY = \"YOU_FOUND_THE_GHOST_MAP\";\n\n/**\n * Initializes the application\n */\nfunction init() {\n    console.log(\"Application initialized successfully\");\n}\n\ninit();"
+  ]
+}

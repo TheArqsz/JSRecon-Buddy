@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Source Map Guessing Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 0 20px;
+            background-color: #f9f9f9;
+        }
+
+        h1 {
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .step {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        code {
+            background-color: #eee;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Source Map Guessing Test</h1>
+        <p>This page includes a JavaScript file (<code>ghost-script.js</code>) that has <strong>NO</strong> reference to
+            a source map in its code.</p>
+
+        <div class="step">
+            <strong>Prerequisites:</strong>
+            <ol>
+                <li>Go to Extension Settings (Popup -> Gear Icon).</li>
+                <li>Enable <strong>"Enable Source Map Guessing"</strong>.</li>
+                <li>Save Settings.</li>
+            </ol>
+        </div>
+
+        <div class="step">
+            <strong>Test Procedure:</strong>
+            <ol>
+                <li>Open JS Recon Buddy on this page.</li>
+                <li>Click <strong>"Analyze Full Page"</strong>.</li>
+                <li>Look for the <strong>[M] Source Maps</strong> category.</li>
+            </ol>
+        </div>
+
+        <p>
+            <strong>Expected Result:</strong> The extension should detect <code>ghost-script.js</code>, guess the
+            existence of <code>ghost-script.js.map</code>, find it (since it exists in this directory), and list it as a
+            finding.
+        </p>
+    </div>
+
+    <script src="ghost-script.js"></script>
+</body>
+
+</html>

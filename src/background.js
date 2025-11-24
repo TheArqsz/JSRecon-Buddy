@@ -238,19 +238,23 @@ async function migrateOldStorageFormat() {
  * concurrent network requests and enforce a rate limit.
  *
  * @param {string} url The URL to fetch.
- * @param {object} [options={ responseType: 'text' }] - Configuration for the fetch.
- * @param {'text'|'response'} [options.responseType='text'] - Determines what the promise resolves with.
- * - 'text': Resolves with the string content of the response body.
- * - 'response': Resolves with the full `Response` object to access status codes and headers.
+ * @param {object} [options={}] - Combined options for the request.
+ * @param {'text'|'response'} [options.responseType='text'] - Extension-specific: determines resolution type.
+ * @param {string} [options.method] - Native fetch option (GET, POST, etc).
+ * @param {object} [options.headers] - Native fetch option.
+ * @param {string} [options.credentials] - Native fetch option.
  * @returns {Promise<string|Response|null>} A promise that resolves with the specified response type, or null on error.
  */
-export function throttledFetch(url, options = { responseType: 'text', method: 'GET' }) {
+export function throttledFetch(url, options = {}) {
+  const { responseType = 'text', ...fetchOptions } = options;
+
   return new Promise((resolve) => {
     fetchQueue.push({
       url,
       resolve,
       responseType: options.responseType || 'text',
-      method: options.method || 'GET'
+      method: options.method || 'GET',
+      fetchOptions: fetchOptions
     });
     processFetchQueue();
   });
@@ -267,9 +271,9 @@ function processFetchQueue() {
   }
 
   activeFetches++;
-  const { url, resolve, responseType, method } = fetchQueue.shift();
+  const { url, resolve, responseType, method, fetchOptions } = fetchQueue.shift();
 
-  fetch(url, { method: method })
+  fetch(url, { method: method, ...fetchOptions })
     .then(response => {
       if (method === 'HEAD') {
         return response.ok;
@@ -1232,7 +1236,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     (async () => {
       const packageNames = request.packages;
       const checkPromises = packageNames.map(async (name) => {
-        const response = await throttledFetch(`https://registry.npmjs.org/${encodeURIComponent(name)}`, { responseType: 'response' });
+        const response = await throttledFetch(
+          `https://registry.npmjs.org/${encodeURIComponent(name)}`,
+          {
+            responseType: 'response',
+            method: 'GET',
+            credentials: 'omit',
+            referrerPolicy: 'no-referrer',
+            cache: 'no-store'
+          }
+        );
 
         if (response && response.status === 404) {
           return name;

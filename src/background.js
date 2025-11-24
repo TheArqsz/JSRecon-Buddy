@@ -795,15 +795,12 @@ async function runPassiveScan(pageData, tabId, storageKey, sessionCacheKey) {
     }
   });
 
-  const contentMap = {};
   const sourcesForOffscreen = allContentSources
     .filter(s => s.content)
     .map(s => {
       const contentSize = new Blob([s.content]).size;
       const isTooLarge = contentSize > MAX_CONTENT_SIZE_BYTES;
-      if (!isTooLarge) {
-        contentMap[s.source] = s.content;
-      }
+
       return { source: s.source, content: s.content, isTooLarge: isTooLarge };
     });
 
@@ -850,6 +847,19 @@ async function runPassiveScan(pageData, tabId, storageKey, sessionCacheKey) {
       }
       const findings = response.data;
       scannedPages.set(sessionCacheKey, { findingsCount: findings.length });
+
+      const contentMap = {};
+      if (findings.length > 0) {
+        const sourcesWithFindings = new Set(findings.map(f => f.source));
+
+        sourcesForOffscreen.forEach(s => {
+          const isLocal = s.source.startsWith("Inline") || s.source === "HTML Document";
+          if (sourcesWithFindings.has(s.source) || isLocal) {
+            contentMap[s.source] = s.content;
+          }
+        });
+      }
+
       try {
         const dataToStore = {
           status: 'complete',

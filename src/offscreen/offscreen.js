@@ -71,7 +71,7 @@ export async function performScan(allContentSources, secretRules) {
 export async function messageHandler(request, sender, sendResponse) {
   if (request.type === 'ping') {
     sendResponse({ status: 'ready' });
-    return;
+    return true;
   }
 
   if (request.type === 'scanContent') {
@@ -87,5 +87,7 @@ export async function messageHandler(request, sender, sendResponse) {
       console.warn("[JS Recon Buddy] An error has occurred during offscreen scan:", error);
       sendResponse({ status: 'error', message: error.message });
     }
+    return true;
   }
+  return false;
 }

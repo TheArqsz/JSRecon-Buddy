@@ -741,6 +741,7 @@
             <span id="code-filename">Select a file</span>
             <div class="button-group">
               <button id="copy-code-button" class="btn btn--copy" title="Copy code" disabled>${copyButtonSVG}</button>
+              <button id="download-all-button" class="btn btn--primary" disabled>Download All (JSON)</button>
               <button id="download-file-button" class="btn btn--primary" disabled>Download</button>
             </div>
           </div>
@@ -757,6 +758,9 @@
       const codeFilenameEl = modalContent.querySelector('#code-filename');
       const copyButton = modalContent.querySelector('#copy-code-button');
       const downloadButton = modalContent.querySelector('#download-file-button');
+      const downloadAllButton = modalContent.querySelector('#download-all-button');
+      const hasValidSources = Object.keys(sources).filter(key => key !== "jsrecon.buddy.error.log").length > 0;
+      downloadAllButton.disabled = !hasValidSources;
 
       modalContent.querySelectorAll('.file-link').forEach(link => {
         link.addEventListener('click', (e) => {
@@ -769,7 +773,7 @@
 
           const hasContent = fileContent.length > 0;
           copyButton.disabled = !hasContent;
-          downloadButton.disabled = !hasContent;
+          downloadButton.disabled = !(hasContent && hasValidSources);
         });
       });
 
@@ -797,6 +801,42 @@
         const a = document.createElement('a');
         a.href = url;
         a.download = fileName.split('/').pop();
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      });
+
+      downloadAllButton.addEventListener('click', () => {
+        if (!sources || Object.keys(sources).length === 0) return;
+
+        const filteredSources = {};
+        for (const [fileName, content] of Object.entries(sources)) {
+          if (fileName !== "jsrecon.buddy.error.log") {
+            filteredSources[fileName] = content;
+          }
+        }
+
+        if (Object.keys(filteredSources).length === 0) {
+          downloadAllButton.disabled = true;
+          return;
+        }
+
+        const exportData = {
+          metadata: {
+            url: sourceMapUrl,
+            extractedAt: new Date().toISOString(),
+            fileCount: Object.keys(filteredSources).length
+          },
+          sources: filteredSources
+        };
+
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const mapName = sourceMapUrl.split('/').pop() || 'source-map';
+        a.download = `${mapName}-dump.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);

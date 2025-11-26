@@ -58,6 +58,23 @@ export function getPatterns(parameters) {
         context: "line",
       },
     ],
+    "GraphQL": [
+      {
+        regex: /(["'`])((?:https?:\/\/[^"'\s]*)?(?:\/api)?(?:\/v\d+)?\/graphql)(?:\?[^"']*)?\1/g,
+        group: 2,
+        context: "line",
+      },
+      {
+        regex: /(?:query|mutation|subscription)\s+[a-zA-Z0-9_]+\s*[({]|gql\s*`/g,
+        group: 0,
+        context: "snippet",
+      },
+      {
+        regex: /__schema\s*\{|__type\s*\(/g,
+        group: 0,
+        context: "snippet",
+      }
+    ],
   };
   for (const rule of secretRules) {
     if (!patterns["Potential Secrets"]) {

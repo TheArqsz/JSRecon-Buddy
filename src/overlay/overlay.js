@@ -424,6 +424,28 @@
           copySelector: ".finding-details > summary",
         },
         {
+          key: "GraphQL",
+          title: "[G] GraphQL Findings",
+          formatter: (safe, occ, raw) => {
+            if (raw.match(/^https?:\/\/|^\/|\/graphql$/)) {
+              let url = raw;
+              if (raw.startsWith("//")) {
+                url = `https:${raw}`;
+              } else if (raw.startsWith("/")) {
+                try {
+                  url = new URL(raw, location.origin).href;
+                } catch (e) { }
+              }
+              const safeUrl = sanitizeUrl(url) || '#';
+              return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${safe}</a>`;
+            }
+
+            const preview = safe.length > 80 ? safe.substring(0, 80) + '...' : safe;
+            return `<code style="color:#e91e63; word-break:break-all;">${preview}</code>`;
+          },
+          copySelector: ".finding-details > summary",
+        },
+        {
           key: "Potential DOM XSS Sinks",
           title: "[!] Potential DOM XSS Sinks",
           formatter: (safe) => `<span style="color:#ff8a80;">${safe}</span>`,

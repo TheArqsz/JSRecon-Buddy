@@ -1,3 +1,11 @@
+## [1.18.0](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.17.3...v1.18.0) (2025-11-26)
+
+
+### Features
+
+* add ability to download full source map tree as JSON ([53e2c43](https://github.com/TheArqsz/JSRecon-Buddy/commit/53e2c436f60686d11ea27c8bd7ee2ab6f0d75edb))
+* implement GraphQL endpoint and operation discovery ([07a0c3b](https://github.com/TheArqsz/JSRecon-Buddy/commit/07a0c3b7e5909b9565da47fe9c08b7632a2bb8be))
+
 ## [1.17.3](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.17.2...v1.17.3) (2025-11-24)
 
 

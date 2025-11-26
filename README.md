@@ -98,6 +98,7 @@ The scanner uses a set of regex patterns to identify and categorize potential se
 > You can test this feature by cloning this repository, opening the `assets/dependency-confusion-test/index.html` file in your browser, and running an on-demand scan.
 
 - Interesting Parameters - flags potentially vulnerable URL parameters (e.g., redirect, debug, url).
+- GraphQL - detects standard GraphQL endpoints (e.g. `/graphql`), client-side operation definitions (Queries/Mutations) and usage of introspection.
 - Source Maps - finds links to source maps which can expose original source code. Can optionally guess the location of source maps for discovered JavaScript files even if they aren't explicitly linked.
 
 > [!NOTE]
@@ -254,6 +255,8 @@ By clicking the icon, you can open the popup to view a detailed list of these pa
 ### Source maps deconstruction
 
 If you want to view deconstructed source files, click on the Source Map entry, then on the url. What you will see, is the source code as available in the source map itself.
+
+You can also **download the entire reconstructed source tree** as a JSON by clicking the "Download All (JSON)" button in the viewer. This allows you to analyze the full project structure offline.
 
 <p align="center">
 	<img src="./assets/deconstructed-sources.png" alt="Source maps" width="90%"/>

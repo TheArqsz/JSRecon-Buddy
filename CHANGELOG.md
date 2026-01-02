@@ -1,3 +1,10 @@
+## [1.18.1](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.18.0...v1.18.1) (2026-01-02)
+
+
+### Bug Fixes
+
+* **background:** handle empty or malformed JSON in source map fetching ([fb6d600](https://github.com/TheArqsz/JSRecon-Buddy/commit/fb6d600a771d118af8f36bb4961897c9cc6e961a))
+
 ## [1.18.0](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.17.3...v1.18.0) (2025-11-26)
 
 

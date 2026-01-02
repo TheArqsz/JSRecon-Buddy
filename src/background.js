@@ -1201,8 +1201,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         if (!response.ok) {
           throw new Error(`HTTP status ${response.status}`);
         }
-        const json = await response.json();
-        sendResponse(json);
+
+        try {
+          const json = JSON.parse(text);
+          sendResponse(json);
+        } catch (e) {
+          throw new Error('The response is not valid JSON. The source map may be malformed.');
+        }
       } catch (error) {
         console.warn(`[JS Recon Buddy] Error in FETCH_FROM_CONTENT_SCRIPT for ${request.url}:`, error);
         sendResponse({ status: 'error', message: error.message });

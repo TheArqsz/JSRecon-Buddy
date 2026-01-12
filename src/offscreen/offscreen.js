@@ -32,28 +32,40 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
  */
 export async function performScan(allContentSources, secretRules) {
   const findings = [];
+  const MAX_MATCHES_PER_RULE = 1000;
+
   for (const { source, content, isTooLarge } of allContentSources) {
     if (!content || isTooLarge) continue;
 
     for (const rule of secretRules) {
-      const matches = content.matchAll(rule.regex);
-      for (const match of matches) {
-        const secret = match[rule.group || 0];
+      let matchCount = 0;
+      try {
+        const matches = content.matchAll(rule.regex);
+        for (const match of matches) {
+          if (matchCount++ > MAX_MATCHES_PER_RULE) {
+            console.warn(`[JS Recon Buddy] Rule ${rule.id} exceeds max matches for ${source} - skipping remaining`)
+          }
 
-        if (rule.entropy && shannonEntropy(secret) < rule.entropy) {
-          continue;
+          const secret = match[rule.group || 0];
+
+          if (rule.entropy && shannonEntropy(secret) < rule.entropy) {
+            continue;
+          }
+
+          const { line, column } = getLineAndColumn(content, match.index);
+          findings.push({
+            id: rule.id,
+            description: rule.description,
+            secret: secret,
+            source: source,
+            isSourceTooLarge: isTooLarge,
+            line: line,
+            column: column
+          });
         }
-
-        const { line, column } = getLineAndColumn(content, match.index);
-        findings.push({
-          id: rule.id,
-          description: rule.description,
-          secret: secret,
-          source: source,
-          isSourceTooLarge: isTooLarge,
-          line: line,
-          column: column
-        });
+      } catch (error) {
+        console.warn(`[JS Recon Buddy] Error processing rule ${rule.id} on ${source}`, error.message)
+        continue
       }
     }
     await new Promise(resolve => setTimeout(resolve, 0));

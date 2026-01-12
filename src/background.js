@@ -1083,11 +1083,10 @@ chrome.webNavigation.onHistoryStateUpdated.addListener(async (details) => {
  * Cleans up the scanned pages set when a tab is closed to prevent memory leaks.
  */
 chrome.tabs.onRemoved.addListener((tabId) => {
-  for (const key of scannedPages.keys()) {
-    if (key.startsWith(`${tabId}|`)) {
-      scannedPages.delete(key);
-    }
-  }
+  const prefix = `${tabId}|`;
+  const keysToDelete = Array.from(scannedPages.keys()).filter(key => key.startsWith(prefix));
+  keysToDelete.forEach(key => scannedPages.delete(key));
+
   scansInProgress.delete(tabId);
   removedTabs.add(tabId);
 });

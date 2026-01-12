@@ -1202,6 +1202,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           throw new Error(`HTTP status ${response.status}`);
         }
 
+        const text = await response.text();
+
         try {
           const json = JSON.parse(text);
           sendResponse(json);

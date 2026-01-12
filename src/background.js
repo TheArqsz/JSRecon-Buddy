@@ -142,9 +142,14 @@ function debounceByKey(func, delay) {
       clearTimeout(timers.get(key));
     }
 
-    const timerId = setTimeout(() => {
-      func(key, ...args);
-      timers.delete(key);
+    const timerId = setTimeout(async () => {
+      try {
+        await func(key, ...args);
+      } catch (error) {
+        console.error('[JS Recon Buddy] Debounced function error:', error);
+      } finally {
+        timers.delete(key);
+      }
     }, delay);
 
     timers.set(key, timerId);

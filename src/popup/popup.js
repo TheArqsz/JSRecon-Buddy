@@ -365,7 +365,7 @@ export function renderContent(storedData, findingsList, isScannable = true, isPa
         };
         await chrome.storage.local.set({ [storageKey]: dataToStore });
 
-        chrome.tabs.create({ url: `${viewerUrl}#${storageKey}` });
+        chrome.tabs.create({ url: `${viewerUrl}#${encodeURIComponent(storageKey)}` });
 
         window.close();
       };

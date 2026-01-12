@@ -1,3 +1,13 @@
+## [1.18.2](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.18.1...v1.18.2) (2026-01-12)
+
+
+### Bug Fixes
+
+* **background:** added proper error handling for a function debouncing ([70e4e36](https://github.com/TheArqsz/JSRecon-Buddy/commit/70e4e3647cb7320b7ad07bfa62a06284c8f64e33))
+* Fixed sourcemap content not properly parsed (variable without initialization) ([0be4a5e](https://github.com/TheArqsz/JSRecon-Buddy/commit/0be4a5eecf694309efe1dc5acb945a03d6f0e7c5))
+* **offscreen:** added top limit for a single regex match ([a8d8d99](https://github.com/TheArqsz/JSRecon-Buddy/commit/a8d8d99a5eba7b5d1e60c9fa7dc0cf936111ad11))
+* **popup:** added storageKey encoding to prevent potential code injection ([b769105](https://github.com/TheArqsz/JSRecon-Buddy/commit/b769105462a9e6a4756c9eac76a785b5827daa5a))
+
 ## [1.18.1](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.18.0...v1.18.1) (2026-01-02)
 
 

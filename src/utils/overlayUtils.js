@@ -306,6 +306,14 @@ export async function processScriptsAsync(scripts, patterns, dependencies, onPro
     const finding = match[rule.group || 0]?.trim();
     if (!finding) return false;
 
+    let httpMethod = null;
+    if (category === "Endpoints" && rule.methodGroup) {
+      const methodValue = match[rule.methodGroup];
+      if (methodValue) {
+        httpMethod = methodValue.trim().toUpperCase();
+      }
+    }
+
     const validationMap = {
       Subdomains: () => isValidSubdomain(finding),
       "Potential Secrets": () => isValidEntropy(finding, rule.ruleEntropy),
@@ -316,8 +324,14 @@ export async function processScriptsAsync(scripts, patterns, dependencies, onPro
       return false;
     }
 
-    if (!results[category].has(finding)) {
-      results[category].set(finding, []);
+    const displayKey = httpMethod ? `[${httpMethod}] ${finding}` : finding;
+
+    if (!results[category]) {
+      results[category] = new Map();
+    }
+
+    if (!results[category].has(displayKey)) {
+      results[category].set(displayKey, []);
     }
 
     const { line, column } = getLineAndColumn(code, match.index);
@@ -327,11 +341,18 @@ export async function processScriptsAsync(scripts, patterns, dependencies, onPro
       index: match.index,
       secretLength: finding.length,
       line,
-      column
+      column,
+      ...(httpMethod && { httpMethod }),
     };
 
-    results[category].get(finding).push(occurrence);
-    return true;
+    const occurrenceArray = results[category].get(displayKey);
+    if (occurrenceArray) {
+      occurrenceArray.push(occurrence);
+      return true;
+    } else {
+      console.error(`[JS Recon Buddy] Failed to get occurrence array for ${category}:${displayKey}`);
+      return false;
+    }
   };
 
   let processedCount = 0;

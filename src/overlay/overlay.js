@@ -408,18 +408,47 @@
           key: "Endpoints",
           title: "[/] Endpoints & Paths",
           formatter: (safe, occ, raw) => {
+            const methodMatch = raw.match(/^\[([A-Z]+)\]\s+(.+)$/);
+            let httpMethod = null;
+            let actualPath = raw;
+
+            if (methodMatch) {
+              httpMethod = methodMatch[1];
+              actualPath = methodMatch[2];
+            }
+
             let url;
-            if (raw.startsWith("//")) {
-              url = `https:${raw}`;
-            } else if (raw.startsWith("http")) {
-              url = raw;
+            if (actualPath.startsWith("//")) {
+              url = `https:${actualPath}`;
+            } else if (actualPath.startsWith("http")) {
+              url = actualPath;
             } else {
               try {
-                url = new URL(raw, location.origin).href;
+                url = new URL(actualPath, location.origin).href;
               } catch (e) { }
             }
             const safeUrl = sanitizeUrl(url) || '#';
-            return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${safe}</a>`;
+            let html = '';
+
+            if (httpMethod) {
+              const methodColors = {
+                'GET': '#4caf50',
+                'POST': '#2196f3',
+                'PUT': '#ff9800',
+                'DELETE': '#f44336',
+                'PATCH': '#9c27b0',
+                'HEAD': '#607d8b',
+                'OPTIONS': '#795548'
+              };
+              const color = methodColors[httpMethod] || '#757575';
+
+              html += `<span style="display:inline-block;background:${color};color:white;padding:2px 6px;border-radius:3px;font-size:0.75em;font-weight:bold;margin-right:6px;">${httpMethod}</span>`;
+              console.log(httpMethod);
+            }
+
+            html += ` <a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${escapeHTML(actualPath)}</a>`;
+
+            return html;
           },
           copySelector: ".finding-details > summary",
         },

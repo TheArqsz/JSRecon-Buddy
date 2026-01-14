@@ -16,11 +16,42 @@ export function getPatterns(parameters) {
       group: 1,
       context: "snippet",
     },
-    Endpoints: {
-      regex: /(["'`])(\/(?!\/)[a-zA-Z0-9_?&=\/\-#.]*)\1/g,
-      group: 2,
-      context: "snippet",
-    },
+    Endpoints: [
+      {
+        ruleId: "endpoint-bare-url",
+        regex: /(["'`])(\/(?!\/)[a-zA-Z0-9_?&=\/\-#.]*)\1/g,
+        group: 2,
+        context: "snippet",
+      },
+      {
+        ruleId: "endpoint-fetch-with-method",
+        regex: /fetch\s*\(\s*["'`]([^"'`]+)["'`]\s*,\s*\{[^}]{0,200}?method\s*:\s*["'`](\w+)["'`]/gi,
+        group: 1,
+        methodGroup: 2,
+        context: "snippet",
+      },
+      {
+        ruleId: "endpoint-axios-method",
+        regex: /axios\s*\.\s*(get|post|put|patch|delete|head|options)\s*\(\s*["'`]([^"'`]+)["'`]/gi,
+        group: 2,
+        methodGroup: 1,
+        context: "snippet",
+      },
+      {
+        ruleId: "endpoint-http-method",
+        regex: /\b(?:client|api|http|request|httpClient|apiClient|restClient|service)\s*\.\s*(get|post|put|patch|delete|head|options)\s*\(\s*["'`]([^"'`]+)["'`]/gi,
+        group: 2,
+        methodGroup: 1,
+        context: "snippet",
+      },
+      {
+        ruleId: "endpoint-xhr-open",
+        regex: /\.open\s*\(\s*["'`](\w+)["'`]\s*,\s*["'`]([^"'`]+)["'`]/gi,
+        group: 2,
+        methodGroup: 1,
+        context: "snippet",
+      },
+    ],
     "Source Maps": {
       regex: /\/[#*]\s?sourceMappingURL=([^\s<]+)/g,
       group: 1,

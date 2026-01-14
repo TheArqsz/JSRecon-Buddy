@@ -111,3 +111,5 @@ pids
 *.launch
 typings
 .node_repl_history
+
+.burpsense

@@ -1,3 +1,10 @@
+## [1.19.0](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.18.2...v1.19.0) (2026-01-15)
+
+
+### Features
+
+* **methods:** added working version of the methods in endpoints feature ([62966d7](https://github.com/TheArqsz/JSRecon-Buddy/commit/62966d71c95eaca8eec69a8a8dde68671a46e6fb))
+
 ## [1.18.2](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.18.1...v1.18.2) (2026-01-12)
 
 

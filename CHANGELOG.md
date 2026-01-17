@@ -1,3 +1,17 @@
+## [1.19.2](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.19.1...v1.19.2) (2026-01-17)
+
+
+### Bug Fixes
+
+* **background:** prevent passive scans from bypassing queue concurrency limit ([5784a68](https://github.com/TheArqsz/JSRecon-Buddy/commit/5784a6873b784a879bd4c6e973d785ec61833e19))
+
+
+### Performance Improvements
+
+* **background:** reduce passive scan debounce delay for faster response ([7650bd6](https://github.com/TheArqsz/JSRecon-Buddy/commit/7650bd6a8147d9337d7cbe2c57e74cc3a1228522))
+* **popup:** batch storage reads for faster popup initialization ([b574ddb](https://github.com/TheArqsz/JSRecon-Buddy/commit/b574ddbbe4d992d90a51e76bfb0b0703a83dbe9b))
+* **popup:** use requestAnimationFrame for smoother storage updates ([cc29e3c](https://github.com/TheArqsz/JSRecon-Buddy/commit/cc29e3c1cdd49f348bb976d32e1307deb69a7b91))
+
 ## [1.19.1](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.19.0...v1.19.1) (2026-01-17)
 
 

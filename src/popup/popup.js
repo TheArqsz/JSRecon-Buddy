@@ -242,7 +242,7 @@ export async function storageChangeListener(changes, areaName) {
         loadAndRenderSecrets(activeTab, isScannable);
         storageUpdateTimeout = null;
       });
-    }, 50);
+    }, 10);
   }
 }
 

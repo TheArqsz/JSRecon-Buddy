@@ -1,3 +1,10 @@
+## [1.19.1](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.19.0...v1.19.1) (2026-01-17)
+
+
+### Bug Fixes
+
+* **background:** fixed firefox not rendering passive scan results due to contentMap not being created ([e3bbf90](https://github.com/TheArqsz/JSRecon-Buddy/commit/e3bbf908813299cba761b3985e21eed8ec7ce95f))
+
 ## [1.19.0](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.18.2...v1.19.0) (2026-01-15)
 
 

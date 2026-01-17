@@ -1,3 +1,11 @@
+## [1.19.3](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.19.2...v1.19.3) (2026-01-17)
+
+
+### Performance Improvements
+
+* **popup:** add optimized UI update to eliminate redundant storage reads ([9b57df1](https://github.com/TheArqsz/JSRecon-Buddy/commit/9b57df166a4f006e340b1efcf3330744c990d06a))
+* **popup:** reduce storage update debounce from 50ms to 10ms ([9db3bec](https://github.com/TheArqsz/JSRecon-Buddy/commit/9db3bec03eade1bf05e2cae7831b5b8051b4b201))
+
 ## [1.19.2](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.19.1...v1.19.2) (2026-01-17)
 
 

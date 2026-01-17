@@ -105,6 +105,7 @@ export async function initializePopup() {
     const scanButton = document.getElementById('scan-button');
     const rescanPassiveButton = document.getElementById('rescan-passive-btn');
     const scanToggle = document.getElementById('scan-toggle');
+    const findingsList = document.getElementById('findings-list');
 
     [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
@@ -138,11 +139,6 @@ export async function initializePopup() {
       localData[pageKey],
       isPassiveScanningEnabled
     );
-
-    const findingsList = document.getElementById('findings-list');
-    if (findingsList) {
-      renderContent(localData[pageKey], findingsList, isScanningEnabled, isPassiveScanningEnabled);
-    }
 
     scanToggle.addEventListener('change', async (event) => {
       const isEnabled = event.target.checked;

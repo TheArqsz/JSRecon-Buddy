@@ -526,6 +526,23 @@ describe('Background Script Logic', () => {
 
       const scrapeCalls = chrome.scripting.executeScript.mock.calls.filter(call => !call[0].hasOwnProperty('args'));
       expect(scrapeCalls.length).toBe(0);
+
+      const allStorageWrites = chrome.storage.local.set.mock.calls;
+
+      allStorageWrites.forEach((call, index) => {
+        const storageData = call[0];
+        const key = Object.keys(storageData)[0];
+        const value = storageData[key];
+
+        if (value && typeof value === 'object' &&
+          value.status === 'complete' &&
+          'results' in value) {
+
+          expect(value).toHaveProperty('contentMap');
+          expect(value.contentMap).not.toBeUndefined();
+          expect(typeof value.contentMap).toBe('object');
+        }
+      });
     });
   });
 

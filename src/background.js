@@ -606,10 +606,22 @@ async function triggerPassiveScan(tabId, force = false, tab = null) {
     const storageKey = `${PASSIVE_SCAN_RESULT_PREFIX}|${tab.url}`;
     const sessionCacheKey = `${tab.id}|${tab.url}`;
 
-    if (scansInProgress.has(tabId) && !force) {
-      const oldScanPromise = scansInProgress.get(tabId);
-      oldScanPromise.catch(() => { });
-      scansInProgress.delete(tabId);
+    if (scannedPages.has(sessionCacheKey) && !force) {
+      const cachedScan = scannedPages.get(sessionCacheKey);
+      await updateActionUI(tab.id, cachedScan.findingsCount);
+      return;
+    }
+
+    if (!force) {
+      const dataWrapper = await chrome.storage.local.get(storageKey);
+      const storedData = dataWrapper[storageKey];
+
+      if (storedData && storedData.status === 'complete') {
+        const findingsCount = storedData.results ? storedData.results.length : 0;
+        await updateActionUI(tab.id, findingsCount);
+        scannedPages.set(sessionCacheKey, { findingsCount });
+        return;
+      }
     }
 
     if (!scanQueue.some(item => item.tabId === tabId)) {
@@ -617,58 +629,6 @@ async function triggerPassiveScan(tabId, force = false, tab = null) {
     }
 
     processScanQueue();
-
-    if (scannedPages.has(sessionCacheKey) && !force) {
-      const cachedScan = scannedPages.get(sessionCacheKey);
-      await updateActionUI(tab.id, cachedScan.findingsCount);
-      return;
-    }
-
-    const dataWrapper = await chrome.storage.local.get(storageKey);
-    const storedData = dataWrapper[storageKey];
-
-    if (storedData && storedData.status === 'complete' && !force) {
-      const findingsCount = storedData.results ? storedData.results.length : 0;
-      if (findingsCount == 0) {
-
-        storedData.contentMap = {};
-        try {
-          await chrome.storage.local.set({ [storageKey]: storedData });
-        } catch (error) { }
-      }
-      await updateActionUI(tab.id, findingsCount);
-      scannedPages.set(sessionCacheKey, { findingsCount });
-      return;
-    }
-
-    const scanPromise = (async () => {
-      await setIconAndState(tabId, 'scanning');
-
-      const injectionResults = await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: scrapePageContent,
-      });
-
-      if (injectionResults && injectionResults[0] && injectionResults[0].result) {
-        await runPassiveScan(injectionResults[0].result, tab.id, storageKey, sessionCacheKey);
-      } else {
-        await setIconAndState(tabId, 'idle');
-      }
-    })();
-
-    scansInProgress.set(tabId, scanPromise);
-
-    scanPromise.catch(error => {
-      if (error && error.message && error.message.includes('Missing host permission for the tab')) {
-        console.warn(`[JS Recon Buddy] Firefox's error for tab ${tabId} was thrown`, error);
-        return
-      } else if (error && error.message && !error.message.includes('No tab with id')) {
-        console.warn(`[JS Recon Buddy] An unexpected error occurred during the scan for tab ${tabId}:`, error);
-      }
-    }).finally(() => {
-      scansInProgress.delete(tabId);
-    });
-
   } catch (error) {
     scansInProgress.delete(tabId);
     if (error.message.includes('No tab with id')) {
@@ -692,11 +652,15 @@ async function processScanQueue() {
 
   try {
     if (scansInProgress.has(tabId) && !force) {
+      activeScans--;
+      processScanQueue();
       return;
     }
 
     const tab = await chrome.tabs.get(tabId);
     if (!tab || !(await isScannable(tab.url))) {
+      activeScans--;
+      processScanQueue();
       return;
     }
 
@@ -706,6 +670,8 @@ async function processScanQueue() {
     if (scannedPages.has(sessionCacheKey) && !force) {
       const cachedScan = scannedPages.get(sessionCacheKey);
       await updateActionUI(tab.id, cachedScan.findingsCount);
+      activeScans--;
+      processScanQueue();
       return;
     }
 
@@ -722,6 +688,8 @@ async function processScanQueue() {
       }
       await updateActionUI(tab.id, findingsCount);
       scannedPages.set(sessionCacheKey, { findingsCount });
+      activeScans--;
+      processScanQueue();
       return;
     }
 

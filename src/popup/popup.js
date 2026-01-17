@@ -210,8 +210,11 @@ export async function storageChangeListener(changes, areaName) {
 
     storageUpdateTimeout = setTimeout(async () => {
       const isScannable = await isScannableFunc(activeTabUrl);
-      await loadAndRenderSecrets(activeTab, isScannable);
-      storageUpdateTimeout = null;
+
+      requestAnimationFrame(() => {
+        loadAndRenderSecrets(activeTab, isScannable);
+        storageUpdateTimeout = null;
+      });
     }, 50);
   }
 }

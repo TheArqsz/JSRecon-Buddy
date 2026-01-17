@@ -640,7 +640,7 @@ describe('Popup UI and Logic', () => {
 
       // 1. call is for 'extensionState' at the start of initializePopup.
       // 2. call is for the page scan results inside loadAndRenderSecrets.
-      expect(chrome.storage.local.get).toHaveBeenCalledTimes(2);
+      expect(chrome.storage.local.get).toHaveBeenCalledTimes(3);
     });
   });
 

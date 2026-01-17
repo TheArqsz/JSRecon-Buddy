@@ -87,82 +87,101 @@ function showInstallationMessage() {
  */
 export async function initializePopup() {
   try {
-    const { extensionState } = await chrome.storage.local.get('extensionState');
-    if (extensionState === 'installing') {
-      showInstallationMessage();
+    try {
+      const { extensionState } = await chrome.storage.local.get('extensionState');
+      if (extensionState === 'installing') {
+        showInstallationMessage();
+        return;
+      }
+    } catch (e) {
+      console.warn("[JS Recon Buddy] Could not get extension state:", e);
+    }
+
+    const scanButton = document.getElementById('scan-button');
+    const rescanPassiveButton = document.getElementById('rescan-passive-btn');
+    const scanToggle = document.getElementById('scan-toggle');
+
+    [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+    if (!activeTab || !activeTab.id) {
+      console.error("[JS Recon Buddy] Could not get active tab.");
       return;
     }
-  } catch (e) {
-    console.warn("[JS Recon Buddy] Could not get extension state:", e);
-  }
 
-  const scanButton = document.getElementById('scan-button');
-  const rescanPassiveButton = document.getElementById('rescan-passive-btn');
-  const scanToggle = document.getElementById('scan-toggle');
+    activeTabId = activeTab.id;
+    activeTabUrl = activeTab.url;
 
-  [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const pageKey = `${PASSIVE_SCAN_RESULT_PREFIX}|${activeTabUrl}`;
 
-  if (!activeTab || !activeTab.id) {
-    console.error("[JS Recon Buddy] Could not get active tab.");
-    return;
-  }
+    const [
+      { isScanningEnabled = true },
+      localData,
+      { isPassiveScanningEnabled = true }
+    ] = await Promise.all([
+      chrome.storage.sync.get('isScanningEnabled'),
+      chrome.storage.local.get(pageKey),
+      chrome.storage.sync.get('isPassiveScanningEnabled')
+    ]);
 
-  activeTabId = activeTab.id;
-  activeTabUrl = activeTab.url;
+    scanToggle.checked = isScanningEnabled;
 
-  const { isScanningEnabled } = await chrome.storage.sync.get({ isScanningEnabled: true });
-  scanToggle.checked = isScanningEnabled;
+    await updateUIVisibility(isScanningEnabled);
 
-  await updateUIVisibility(isScanningEnabled);
+    const findingsList = document.getElementById('findings-list');
+    if (findingsList) {
+      renderContent(localData[pageKey], findingsList, isScanningEnabled, isPassiveScanningEnabled);
+    }
 
-  scanToggle.addEventListener('change', async (event) => {
-    const isEnabled = event.target.checked;
-    await chrome.storage.sync.set({ isScanningEnabled: isEnabled });
+    scanToggle.addEventListener('change', async (event) => {
+      const isEnabled = event.target.checked;
+      await chrome.storage.sync.set({ isScanningEnabled: isEnabled });
 
-    chrome.runtime.sendMessage({
-      type: 'SCANNING_STATE_CHANGED',
-      isEnabled: isEnabled
-    });
-
-    await updateUIVisibility(isEnabled);
-  });
-
-  const manifest = chrome.runtime.getManifest();
-  const versionDisplay = document.getElementById('version-display');
-  if (versionDisplay) {
-    versionDisplay.textContent = `v${manifest.version}`;
-  }
-
-  scanButton.addEventListener('click', async () => {
-    await chrome.runtime.sendMessage({
-      type: 'SCAN_PAGE',
-      tabId: activeTabId
-    });
-    window.close();
-  });
-
-  rescanPassiveButton.addEventListener('click', async () => {
-    try {
-      await chrome.runtime.sendMessage({
-        type: 'FORCE_PASSIVE_RESCAN',
-        tabId: activeTabId
+      chrome.runtime.sendMessage({
+        type: 'SCANNING_STATE_CHANGED',
+        isEnabled: isEnabled
       });
 
-      const findingsList = document.getElementById('findings-list');
-      if (findingsList) {
-        findingsList.innerHTML = '<div class="no-findings"><span>Rescanning...</span></div>';
-      }
-    } catch (error) {
-      console.error('[JS Recon Buddy] Failed to trigger rescan:', error);
-    }
-  });
-
-  const settingsButton = document.getElementById('settings-btn');
-
-  if (settingsButton) {
-    settingsButton.addEventListener('click', () => {
-      chrome.runtime.openOptionsPage();
+      await updateUIVisibility(isEnabled);
     });
+
+    const manifest = chrome.runtime.getManifest();
+    const versionDisplay = document.getElementById('version-display');
+    if (versionDisplay) {
+      versionDisplay.textContent = `v${manifest.version}`;
+    }
+
+    scanButton.addEventListener('click', async () => {
+      await chrome.runtime.sendMessage({
+        type: 'SCAN_PAGE',
+        tabId: activeTabId
+      });
+      window.close();
+    });
+
+    rescanPassiveButton.addEventListener('click', async () => {
+      try {
+        await chrome.runtime.sendMessage({
+          type: 'FORCE_PASSIVE_RESCAN',
+          tabId: activeTabId
+        });
+
+        if (findingsList) {
+          findingsList.innerHTML = '<div class="no-findings"><span>Rescanning...</span></div>';
+        }
+      } catch (error) {
+        console.error('[JS Recon Buddy] Failed to trigger rescan:', error);
+      }
+    });
+
+    const settingsButton = document.getElementById('settings-btn');
+
+    if (settingsButton) {
+      settingsButton.addEventListener('click', () => {
+        chrome.runtime.openOptionsPage();
+      });
+    }
+  } catch (e) {
+    console.warn("[JS Recon Buddy] Error initializing popup:", e);
   }
 }
 

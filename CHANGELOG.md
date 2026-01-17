@@ -1,3 +1,10 @@
+## [1.19.4](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.19.3...v1.19.4) (2026-01-17)
+
+
+### Bug Fixes
+
+* **popup:** declare findingsList for rescan button listener and remove redundant renderContent ([34b5ba1](https://github.com/TheArqsz/JSRecon-Buddy/commit/34b5ba19daddabccf8dc7c391cf6667cc67b02c6))
+
 ## [1.19.3](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.19.2...v1.19.3) (2026-01-17)
 
 

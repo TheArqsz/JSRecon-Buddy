@@ -52,12 +52,16 @@ describe('Popup UI and Logic', () => {
     });
 
     test('should show main content and enable scan button when enabled and scannable', async () => {
-      isScannableFunc.mockResolvedValue(true);
-      await updateUIVisibility(true);
+      chrome.storage.local.get.mockClear();
+      chrome.storage.sync.get.mockClear();
+
+      await updateUIVisibility(true, true, null, true);
+
+      await new Promise(process.nextTick);
+
       expect(document.getElementById('main-content').style.display).toBe('block');
       expect(document.getElementById('disabled-content').style.display).toBe('none');
       expect(document.getElementById('scan-button').disabled).toBe(false);
-      expect(chrome.storage.local.get).toHaveBeenCalled();
     });
 
     test('should show main content but disable scan button when enabled and not scannable', async () => {
@@ -640,7 +644,7 @@ describe('Popup UI and Logic', () => {
 
       // 1. call is for 'extensionState' at the start of initializePopup.
       // 2. call is for the page scan results inside loadAndRenderSecrets.
-      expect(chrome.storage.local.get).toHaveBeenCalledTimes(3);
+      expect(chrome.storage.local.get).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -763,13 +767,19 @@ describe('Popup UI and Logic', () => {
     test('should update UI when a new tab is activated successfully', async () => {
       const newTab = { id: 2, url: 'https://new-active-tab.com' };
       chrome.tabs.get.mockResolvedValue(newTab);
-      chrome.storage.sync.get.mockResolvedValue({ isScanningEnabled: true });
+      chrome.storage.sync.get.mockResolvedValue({
+        isScanningEnabled: true,
+        isPassiveScanningEnabled: true
+      });
+      chrome.storage.local.get.mockResolvedValue({
+        'jsrb_passive_scan|https://new-active-tab.com': { status: 'complete', results: [] }
+      });
 
       await onActivatedListener({ tabId: 2 });
       await flushPromises();
 
       expect(chrome.tabs.get).toHaveBeenCalledWith(2);
-      expect(chrome.storage.sync.get).toHaveBeenCalledWith({ isScanningEnabled: true });
+      expect(chrome.storage.sync.get).toHaveBeenCalledWith(['isScanningEnabled', 'isPassiveScanningEnabled']);
       expect(chrome.storage.local.get).toHaveBeenCalledWith('jsrb_passive_scan|https://new-active-tab.com');
     });
 

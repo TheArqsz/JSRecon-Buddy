@@ -50,4 +50,4 @@ export const OFFSCREEN_IDLE_TIMEOUT_MS = 10 * 60 * 1000;
  * @description The delay in milliseconds for debouncing scan triggers.
  * @type {number}
  */
-export const DEBOUNCE_DELAY_MS = 200;
+export const DEBOUNCE_DELAY_MS = 100;

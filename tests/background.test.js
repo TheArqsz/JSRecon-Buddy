@@ -307,7 +307,7 @@ describe('Background Script Logic', () => {
       webNavigationCompleteListener({ tabId: tab.id, frameId: 0, url: tab.url });
       tabRemovedListener(tab.id);
 
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       const storageCalls = chrome.storage.local.set.mock.calls.filter(call => {
         const key = Object.keys(call[0])[0];

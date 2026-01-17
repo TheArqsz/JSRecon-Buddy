@@ -32,23 +32,28 @@ let activeTabUrl;
 /**
  * Updates the entire popup UI based on whether scanning is enabled or disabled.
  * @param {boolean} isEnabled - The current state of the scanning toggle.
+ * @param {boolean} isScannable - Whether the current page can be scanned.
+ * @param {object} storedData - Pre-fetched scan data from storage.
+ * @param {boolean} isPassiveScanningEnabled - Whether passive scanning is enabled.
  */
-export async function updateUIVisibility(isEnabled) {
+export async function updateUIVisibility(isEnabled, isScannable, storedData, isPassiveScanningEnabled) {
   const mainContent = document.getElementById('main-content');
   const disabledContent = document.getElementById('disabled-content');
   const scanButton = document.getElementById('scan-button');
+  const findingsList = document.getElementById('findings-list');
 
   if (isEnabled) {
     mainContent.style.display = 'block';
     disabledContent.style.display = 'none';
 
-    const isScannable = await isScannableFunc(activeTabUrl);
     if (scanButton) {
       scanButton.disabled = !isScannable;
       scanButton.title = isScannable ? "" : "This page cannot be scanned.";
     }
 
-    loadAndRenderSecrets(activeTab, isScannable);
+    if (findingsList) {
+      renderContent(storedData, findingsList, isScannable, isPassiveScanningEnabled);
+    }
   } else {
     mainContent.style.display = 'none';
     disabledContent.style.display = 'block';
@@ -113,19 +118,26 @@ export async function initializePopup() {
 
     const pageKey = `${PASSIVE_SCAN_RESULT_PREFIX}|${activeTabUrl}`;
 
-    const [
-      { isScanningEnabled = true },
-      localData,
-      { isPassiveScanningEnabled = true }
-    ] = await Promise.all([
-      chrome.storage.sync.get('isScanningEnabled'),
-      chrome.storage.local.get(pageKey),
-      chrome.storage.sync.get('isPassiveScanningEnabled')
+    const [syncData, localData] = await Promise.all([
+      chrome.storage.sync.get(['isScanningEnabled', 'isPassiveScanningEnabled']),
+      chrome.storage.local.get(pageKey)
     ]);
+
+    const {
+      isScanningEnabled = true,
+      isPassiveScanningEnabled = true
+    } = syncData;
 
     scanToggle.checked = isScanningEnabled;
 
-    await updateUIVisibility(isScanningEnabled);
+    const isScannable = await isScannableFunc(activeTabUrl);
+
+    await updateUIVisibility(
+      isScanningEnabled,
+      isScannable,
+      localData[pageKey],
+      isPassiveScanningEnabled
+    );
 
     const findingsList = document.getElementById('findings-list');
     if (findingsList) {
@@ -141,7 +153,22 @@ export async function initializePopup() {
         isEnabled: isEnabled
       });
 
-      await updateUIVisibility(isEnabled);
+      if (isEnabled) {
+        const pageKey = `${PASSIVE_SCAN_RESULT_PREFIX}|${activeTabUrl}`;
+        const [localData, syncSettings] = await Promise.all([
+          chrome.storage.local.get(pageKey),
+          chrome.storage.sync.get({ isPassiveScanningEnabled: true })
+        ]);
+        const isScannable = await isScannableFunc(activeTabUrl);
+        await updateUIVisibility(
+          isEnabled,
+          isScannable,
+          localData[pageKey],
+          syncSettings.isPassiveScanningEnabled
+        );
+      } else {
+        await updateUIVisibility(false, false, null, false);
+      }
     });
 
     const manifest = chrome.runtime.getManifest();
@@ -409,8 +436,26 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
     activeTabId = newTab.id;
     activeTabUrl = newTab.url;
 
-    const { isScanningEnabled } = await chrome.storage.sync.get({ isScanningEnabled: true });
-    await updateUIVisibility(isScanningEnabled);
+    const pageKey = `${PASSIVE_SCAN_RESULT_PREFIX}|${activeTabUrl}`;
+
+    const [syncData, localData] = await Promise.all([
+      chrome.storage.sync.get(['isScanningEnabled', 'isPassiveScanningEnabled']),
+      chrome.storage.local.get(pageKey)
+    ]);
+
+    const {
+      isScanningEnabled = true,
+      isPassiveScanningEnabled = true
+    } = syncData;
+
+    const isScannable = await isScannableFunc(activeTabUrl);
+
+    await updateUIVisibility(
+      isScanningEnabled,
+      isScannable,
+      localData[pageKey],
+      isPassiveScanningEnabled
+    );
   } catch (error) {
     console.warn('[JS Recon Buddy] Error updating popup for new tab:', error);
   }

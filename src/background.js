@@ -933,6 +933,17 @@ async function runPassiveScan(pageData, tabId, storageKey, sessionCacheKey) {
         const findings = response.data;
         scannedPages.set(sessionCacheKey, { findingsCount: findings.length });
         try {
+          const contentMap = {};
+          if (findings.length > 0) {
+            const sourcesWithFindings = new Set(findings.map(f => f.source));
+
+            sourcesForOffscreen.forEach(s => {
+              const isLocal = s.source.startsWith("Inline") || s.source === "HTML Document";
+              if (sourcesWithFindings.has(s.source) || isLocal) {
+                contentMap[s.source] = s.content;
+              }
+            });
+          }
           const dataToStore = {
             status: 'complete',
             results: findings,

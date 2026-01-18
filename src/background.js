@@ -281,6 +281,9 @@ function processFetchQueue() {
   fetch(url, { method: method, ...fetchOptions })
     .then(response => {
       if (method === 'HEAD') {
+        if (responseType === 'response') {
+          return response;
+        }
         return response.ok;
       }
 
@@ -1269,8 +1272,37 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === 'PROBE_SOURCE_MAPS') {
     (async () => {
       const promises = request.urls.map(async (url) => {
-        const exists = await throttledFetch(url, { method: 'HEAD' });
-        return exists ? url : null;
+        try {
+          const response = await throttledFetch(url, {
+            method: 'HEAD',
+            responseType: 'response'
+          });
+
+          if (!response) {
+            return null;
+          }
+
+          if (response.status !== 200) {
+            return null;
+          }
+
+          const contentType = response.headers.get('content-type')?.toLowerCase() || '';
+
+          if (contentType.includes('text/html')) {
+            return null;
+          }
+
+          const contentLength = parseInt(response.headers.get('content-length') || '0', 10);
+
+          if (contentLength > 0 && (contentLength < 50 || contentLength > MAX_CONTENT_SIZE_BYTES * 10)) {
+            return null;
+          }
+
+          return url;
+
+        } catch (error) {
+          return null;
+        }
       });
 
       const results = await Promise.all(promises);

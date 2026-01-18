@@ -1,3 +1,15 @@
+## [1.20.0](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.19.4...v1.20.0) (2026-01-18)
+
+
+### Features
+
+* **sourcemap:** add strict validation to reduce false positives ([e9fe68d](https://github.com/TheArqsz/JSRecon-Buddy/commit/e9fe68df078457318217266e85eff21691fcc3e0))
+
+
+### Bug Fixes
+
+* **background:** handle responseType correctly for HEAD requests and add strict validation to reduce false positives in sourcemaps ([50b0b12](https://github.com/TheArqsz/JSRecon-Buddy/commit/50b0b120001d004894f9ca82ddb33f9abc9db578))
+
 ## [1.19.4](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.19.3...v1.19.4) (2026-01-17)
 
 

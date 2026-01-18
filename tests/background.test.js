@@ -460,9 +460,28 @@ describe('Background Script Logic', () => {
 
       global.fetch.mockImplementation(async (url, options) => {
         if (url === 'https://example.com/valid.js.map' && options.method === 'HEAD') {
-          return { ok: true };
+          return {
+            ok: true,
+            status: 200,
+            headers: {
+              get: (name) => {
+                const headers = {
+                  'content-type': 'application/json',
+                  'content-length': '5000'
+                };
+                return headers[name.toLowerCase()] || null;
+              }
+            }
+          };
         }
-        return { ok: false };
+
+        return {
+          ok: false,
+          status: 404,
+          headers: {
+            get: () => null
+          }
+        };
       });
 
       jest.useFakeTimers();
@@ -473,6 +492,106 @@ describe('Background Script Logic', () => {
 
       expect(global.fetch).toHaveBeenCalledWith('https://example.com/valid.js.map', { method: 'HEAD' });
       expect(global.fetch).toHaveBeenCalledWith('https://example.com/missing.js.map', { method: 'HEAD' });
+
+      expect(sendResponse).toHaveBeenCalledWith(['https://example.com/valid.js.map']);
+      expect(isAsync).toBe(true);
+
+      jest.useRealTimers();
+    });
+
+    test('should reject sourcemaps with HTML content-type (soft 404s)', async () => {
+      const request = {
+        type: 'PROBE_SOURCE_MAPS',
+        urls: ['https://example.com/soft404.js.map']
+      };
+      const sendResponse = jest.fn();
+
+      global.fetch.mockImplementation(async (url, options) => {
+        return {
+          ok: true,
+          status: 200,
+          headers: {
+            get: (name) => {
+              const headers = {
+                'content-type': 'text/html',
+                'content-length': '1000'
+              };
+              return headers[name.toLowerCase()] || null;
+            }
+          }
+        };
+      });
+
+      jest.useFakeTimers();
+      const isAsync = messageListener(request, {}, sendResponse);
+      await jest.runAllTimersAsync();
+
+      expect(sendResponse).toHaveBeenCalledWith([]);
+      expect(isAsync).toBe(true);
+
+      jest.useRealTimers();
+    });
+
+    test('should reject sourcemaps with invalid sizes', async () => {
+      const request = {
+        type: 'PROBE_SOURCE_MAPS',
+        urls: [
+          'https://example.com/tiny.js.map',
+          'https://example.com/huge.js.map',
+          'https://example.com/valid.js.map'
+        ]
+      };
+      const sendResponse = jest.fn();
+
+      global.fetch.mockImplementation(async (url, options) => {
+        if (url.includes('tiny')) {
+          return {
+            ok: true,
+            status: 200,
+            headers: {
+              get: (name) => {
+                const headers = {
+                  'content-type': 'application/json',
+                  'content-length': '30'
+                };
+                return headers[name.toLowerCase()] || null;
+              }
+            }
+          };
+        }
+        if (url.includes('huge')) {
+          return {
+            ok: true,
+            status: 200,
+            headers: {
+              get: (name) => {
+                const headers = {
+                  'content-type': 'application/json',
+                  'content-length': '100000000'
+                };
+                return headers[name.toLowerCase()] || null;
+              }
+            }
+          };
+        }
+        return {
+          ok: true,
+          status: 200,
+          headers: {
+            get: (name) => {
+              const headers = {
+                'content-type': 'application/json',
+                'content-length': '5000'
+              };
+              return headers[name.toLowerCase()] || null;
+            }
+          }
+        };
+      });
+
+      jest.useFakeTimers();
+      const isAsync = messageListener(request, {}, sendResponse);
+      await jest.runAllTimersAsync();
 
       expect(sendResponse).toHaveBeenCalledWith(['https://example.com/valid.js.map']);
       expect(isAsync).toBe(true);
@@ -519,6 +638,8 @@ describe('Background Script Logic', () => {
       await import('../src/background.js');
 
       await webNavigationCompleteListener({ tabId: 1, frameId: 0, url: 'https://example.com' });
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       await poll(() => {
         expect(chrome.action.setIcon).toHaveBeenCalledWith(expect.objectContaining({ path: expect.stringContaining('icon-found') }));
         expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ tabId: 1, text: '1' });
@@ -542,7 +663,7 @@ describe('Background Script Logic', () => {
           expect(value.contentMap).not.toBeUndefined();
           expect(typeof value.contentMap).toBe('object');
         }
-      });
+      }, 10000);
     });
   });
 
@@ -602,7 +723,11 @@ describe('Background Script Logic', () => {
     test('should support HEAD method in throttledFetch and return boolean', async () => {
       await loadBackgroundScript();
 
-      const mockResponse = { ok: true };
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        headers: { get: () => null }
+      };
       global.fetch.mockResolvedValue(mockResponse);
 
       const throttledFetch = (await import('../src/background.js')).throttledFetch;

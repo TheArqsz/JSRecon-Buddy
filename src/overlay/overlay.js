@@ -171,15 +171,50 @@
         if (isSourceMapGuessingEnabled) {
           progressText.textContent = `Guessing source maps...`;
 
+          const seenUrls = new Set();
           const candidates = [];
+
           Object.keys(contentMap).forEach(key => {
             if (key.startsWith('http') && key.endsWith('.js')) {
-              candidates.push(key + '.map');
+              try {
+                const url = new URL(key);
+                url.hash = '';
+                url.protocol = url.protocol.toLowerCase();
+                const normalizedJs = url.href;
+                const mapUrl = normalizedJs + '.map';
+
+                if (!seenUrls.has(normalizedJs)) {
+                  seenUrls.add(normalizedJs);
+                  candidates.push(mapUrl);
+                }
+              } catch (e) {
+                if (!seenUrls.has(key)) {
+                  seenUrls.add(key);
+                  candidates.push(key + '.map');
+                }
+              }
             }
           });
 
           const existingMaps = results['Source Maps'] ? Array.from(results['Source Maps'].keys()) : [];
-          const uniqueCandidates = candidates.filter(url => !existingMaps.includes(url));
+          const existingNormalized = new Set(existingMaps.map(url => {
+            try {
+              const u = new URL(url);
+              u.hash = '';
+              return u.href;
+            } catch {
+              return url;
+            }
+          }));
+          const uniqueCandidates = candidates.filter(url => {
+            try {
+              const u = new URL(url);
+              u.hash = '';
+              return !existingNormalized.has(u.href);
+            } catch {
+              return !existingNormalized.has(url);
+            }
+          });
 
           if (uniqueCandidates.length > 0) {
             const foundMaps = await chrome.runtime.sendMessage({
@@ -202,7 +237,34 @@
                   column: 0
                 };
 
-                if (!results['Source Maps'].has(mapUrl)) {
+                const normalized = (() => {
+                  try {
+                    const u = new URL(mapUrl);
+                    u.hash = '';
+                    return u.href;
+                  } catch {
+                    return mapUrl;
+                  }
+                })();
+
+                let alreadyExists = false;
+                for (const existing of results['Source Maps'].keys()) {
+                  try {
+                    const u = new URL(existing);
+                    u.hash = '';
+                    if (u.href === normalized) {
+                      alreadyExists = true;
+                      break;
+                    }
+                  } catch {
+                    if (existing === mapUrl) {
+                      alreadyExists = true;
+                      break;
+                    }
+                  }
+                }
+
+                if (!alreadyExists) {
                   results['Source Maps'].set(mapUrl, [syntheticOccurrence]);
                 }
               });
@@ -443,7 +505,6 @@
               const color = methodColors[httpMethod] || '#757575';
 
               html += `<span style="display:inline-block;background:${color};color:white;padding:2px 6px;border-radius:3px;font-size:0.75em;font-weight:bold;margin-right:6px;">${httpMethod}</span>`;
-              console.log(httpMethod);
             }
 
             html += ` <a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${escapeHTML(actualPath)}</a>`;

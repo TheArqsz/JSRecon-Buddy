@@ -187,3 +187,26 @@ export function createLRUCache(maxSize) {
     [Symbol.iterator]: () => cache.entries(),
   };
 }
+
+/**
+ * Executes a regex match with a strict timeout.
+ * @param {RegExp} regex - The regex to execute.
+ * @param {string} content - The string to scan.
+ * @param {number} timeoutMs - Max execution time in milliseconds.
+ * @returns {IterableIterator<RegExpMatchArray>|null}
+ */
+export function matchAllWithTimeout(regex, content, timeoutMs = 500) {
+  const startTime = Date.now();
+  const matches = [];
+  let match;
+
+  while ((match = regex.exec(content)) !== null) {
+    matches.push(match);
+
+    if (Date.now() - startTime > timeoutMs) {
+      console.warn(`[JS Recon Buddy] Regex timeout exceeded for pattern: ${regex.source}`);
+      return matches;
+    }
+  }
+  return matches;
+}

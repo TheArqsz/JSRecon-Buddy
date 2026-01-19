@@ -1,4 +1,4 @@
-import { shannonEntropy, getLineAndColumn } from '../utils/coreUtils.js';
+import { shannonEntropy, getLineAndColumn, matchAllWithTimeout } from '../utils/coreUtils.js';
 
 /**
  * Listens for and routes incoming messages from the service worker.
@@ -40,7 +40,7 @@ export async function performScan(allContentSources, secretRules) {
     for (const rule of secretRules) {
       let matchCount = 0;
       try {
-        const matches = content.matchAll(rule.regex);
+        const matches = matchAllWithTimeout(rule.regex, content);
         for (const match of matches) {
           if (matchCount++ > MAX_MATCHES_PER_RULE) {
             console.warn(`[JS Recon Buddy] Rule ${rule.id} exceeds max matches for ${source} - skipping remaining`)

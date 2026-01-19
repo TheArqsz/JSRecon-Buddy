@@ -1,4 +1,4 @@
-import { shannonEntropy, getLineAndColumn } from '../utils/coreUtils.js';
+import { shannonEntropy, getLineAndColumn, matchAllWithTimeout } from '../utils/coreUtils.js';
 
 /**
  * @typedef {object} ContentSource
@@ -39,7 +39,7 @@ function performScan(allContentSources, secretRules) {
   for (const { source, content, isTooLarge } of allContentSources) {
     if (!content || isTooLarge) continue;
     for (const rule of secretRules) {
-      const matches = content.matchAll(rule.regex);
+      const matches = matchAllWithTimeout(rule.regex, content);
       for (const match of matches) {
         const secret = match[rule.group || 0];
 

@@ -462,8 +462,7 @@
         {
           key: "Subdomains",
           title: "[+] Subdomains",
-          formatter: (safe, occ, raw) =>
-            `<a href="https://${raw}" target="_blank" rel="noopener noreferrer">${safe}</a>`,
+          formatter: (safe, occ, raw) => createSecureLink(`https://${raw}`, safe),
           copySelector: ".finding-details > summary",
         },
         {
@@ -489,9 +488,8 @@
                 url = new URL(actualPath, location.origin).href;
               } catch (e) { }
             }
-            const safeUrl = sanitizeUrl(url) || '#';
-            let html = '';
 
+            const fragment = document.createDocumentFragment();
             if (httpMethod) {
               const methodColors = {
                 'GET': '#4caf50',
@@ -503,13 +501,20 @@
                 'OPTIONS': '#795548'
               };
               const color = methodColors[httpMethod] || '#757575';
-
-              html += `<span style="display:inline-block;background:${color};color:white;padding:2px 6px;border-radius:3px;font-size:0.75em;font-weight:bold;margin-right:6px;">${httpMethod}</span>`;
+              const badge = createElement('span', '', httpMethod);
+              Object.assign(badge.style, {
+                display: 'inline-block', background: color, color: 'white',
+                padding: '2px 6px', borderRadius: '3px', fontSize: '0.75em',
+                fontWeight: 'bold', marginRight: '6px'
+              });
+              fragment.appendChild(badge);
             }
 
-            html += ` <a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${escapeHTML(actualPath)}</a>`;
+            const link = createSecureLink(url || '#', actualPath);
+            if (link) fragment.appendChild(link);
+            else fragment.appendChild(createText(actualPath));
 
-            return html;
+            return fragment;
           },
           copySelector: ".finding-details > summary",
         },
@@ -526,46 +531,70 @@
                   url = new URL(raw, location.origin).href;
                 } catch (e) { }
               }
-              const safeUrl = sanitizeUrl(url) || '#';
-              return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${safe}</a>`;
+              return createSecureLink(url, raw) || createText(raw);
             }
 
             const preview = safe.length > 80 ? safe.substring(0, 80) + '...' : safe;
-            return `<code style="color:#e91e63; word-break:break-all;">${preview}</code>`;
+            const code = createElement('code', '', preview);
+            Object.assign(code.style, {
+              color: '#e91e63',
+              wordBreak: 'break-all'
+            });
+            return code;
           },
           copySelector: ".finding-details > summary",
         },
         {
           key: "Potential DOM XSS Sinks",
           title: "[!] Potential DOM XSS Sinks",
-          formatter: (safe) => `<span style="color:#ff8a80;">${safe}</span>`,
+          formatter: (safe, occ, raw) => {
+            const span = createSpan(raw);
+            span.style.color = '#ff8a80';
+            return span;
+          },
           copySelector: ".finding-details > div div",
           copyModifier: "deduplicate-and-clean",
         },
         {
           key: "Potential Secrets",
           title: "[!] Potential Secrets",
-          formatter: (safe) =>
-            `<code style="background:#333; color:#ffeb3b; padding:4px; border-radius:4px;">${safe}</code>`,
+          formatter: (safe, occ, raw) => {
+            const code = createElement('code', '', raw);
+            Object.assign(code.style, {
+              background: '#333',
+              color: '#ffeb3b',
+              padding: '4px',
+              borderRadius: '4px'
+            });
+            return code;
+          },
           copySelector: ".finding-details > summary code",
         },
         {
           key: "Dependency Confusion",
           title: "[!] Potential Dependency Confusion",
-          formatter: (safe) =>
-            `This private package is not on npmjs.com: <code>${safe}</code>`,
+          formatter: (safe, occ, raw) => {
+            const fragment = document.createDocumentFragment();
+            fragment.appendChild(createText("This private package is not on npmjs.com: "));
+            fragment.appendChild(createElement('code', '', raw));
+            return fragment;
+          },
           copySelector: ".finding-details > summary code",
         },
         {
           key: "Interesting Parameters",
           title: "[?] Interesting Parameters",
-          formatter: (safe) => `<span style="color:#ffd180;">${safe}</span>`,
+          formatter: (safe, occ, raw) => {
+            const span = createSpan(raw);
+            span.style.color = '#ffd180';
+            return span;
+          },
           copySelector: ".finding-details > summary",
         },
         {
           key: "JS Libraries",
           title: "[L] JS Libraries",
-          formatter: (t) => `<span>${t}</span>`,
+          formatter: (safe, occ, raw) => createSpan(raw),
           copySelector: ".finding-details > summary",
         },
         {
@@ -581,21 +610,26 @@
             } catch (e) {
               console.warn("Could not create a valid URL for source map:", rawFinding, "from source:", sourceUrl);
             }
-            const safeUrl = sanitizeUrl(fullUrl) || '#';
-            return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="source-map-link" data-url="${safeUrl}">${safe}</a>`;
+            const link = createSecureLink(fullUrl, rawFinding);
+            if (link) {
+              link.classList.add("source-map-link");
+              link.dataset.url = link.href;
+              return link;
+            }
+            return createText(rawFinding);
           },
           copySelector: ".finding-details > summary > a",
         },
         {
           key: "External Scripts",
           title: "[S] External Scripts",
-          formatter: (s) => s,
+          formatter: (safe, occ, raw) => createText(raw),
           copySelector: "details > ul > li > a",
         },
         {
           key: "Inline Scripts",
           title: "[IS] Inline Scripts",
-          formatter: (s) => s,
+          formatter: (safe, occ, raw) => createText(raw),
         }
       ];
       const fragment = document.createDocumentFragment();
@@ -1121,7 +1155,12 @@
       const li = createElement("li");
       const details = createElement("details", "finding-details");
       const summary = createElement("summary");
-      summary.innerHTML = renderedItem;
+
+      if (renderedItem instanceof Node) {
+        summary.appendChild(renderedItem);
+      } else {
+        summary.textContent = String(renderedItem);
+      }
 
       const occurrencesContainer = createElement("div");
       occurrencesContainer.style.cssText = "font-size:.85em;color:#999;padding-left:15px;margin-top:5px";

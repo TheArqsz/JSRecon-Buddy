@@ -1,3 +1,11 @@
+## [1.20.1](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.20.0...v1.20.1) (2026-01-19)
+
+
+### Bug Fixes
+
+* **offscreen:** implement regex execution timeouts ([78dce49](https://github.com/TheArqsz/JSRecon-Buddy/commit/78dce49bb08f1693911bcf43af54e3548a5d48db))
+* **security:** eliminate innerHTML usage in results list ([cdde690](https://github.com/TheArqsz/JSRecon-Buddy/commit/cdde690e7e8335b9ab6af20648076b023ebdeef2))
+
 ## [1.20.0](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.19.4...v1.20.0) (2026-01-18)
 
 

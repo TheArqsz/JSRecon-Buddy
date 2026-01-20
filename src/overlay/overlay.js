@@ -843,46 +843,91 @@
       const existingModal = shadowRoot.getElementById('context-modal');
       if (existingModal) existingModal.remove();
 
-      const modal = document.createElement("div");
-      modal.id = "context-modal";
-
-      const copyButtonSVG = `<svg width='12' height='12' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink'><rect width='24' height='24' stroke='none' fill='#000000' opacity='0'/><g transform="matrix(1.43 0 0 1.43 12 12)" ><path style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-dashoffset: 0; stroke-linejoin: miter; stroke-miterlimit: 4; fill: rgb(255,255,255); fill-rule: nonzero; opacity: 1;" transform=" translate(-8, -7.5)" d="M 2.5 1 C 1.675781 1 1 1.675781 1 2.5 L 1 10.5 C 1 11.324219 1.675781 12 2.5 12 L 4 12 L 4 12.5 C 4 13.324219 4.675781 14 5.5 14 L 13.5 14 C 14.324219 14 15 13.324219 15 12.5 L 15 4.5 C 15 3.675781 14.324219 3 13.5 3 L 12 3 L 12 2.5 C 12 1.675781 11.324219 1 10.5 1 Z M 2.5 2 L 10.5 2 C 10.78125 2 11 2.21875 11 2.5 L 11 10.5 C 11 10.78125 10.78125 11 10.5 11 L 2.5 11 C 2.21875 11 2 10.78125 2 10.5 L 2 2.5 C 2 2.21875 2.21875 2 2.5 2 Z M 12 4 L 13.5 4 C 13.78125 4 14 4.21875 14 4.5 L 14 12.5 C 14 12.78125 13.78125 13 13.5 13 L 5.5 13 C 5.21875 13 5 12.78125 5 12.5 L 5 12 L 10.5 12 C 11.324219 12 12 11.324219 12 10.5 Z" stroke-linecap="round" /></g></svg>`;
-
       const filePaths = Object.keys(sources);
       const fileTreeHTML = generateFileTreeHTML(filePaths);
 
-      const safeUrl = sanitizeUrl(sourceMapUrl) || "#";
-      const safeFilename = escapeHTML(sourceMapUrl.split('/').pop() || "source map");
+      const copyButtonSVG = `<svg width='12' height='12' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink'><rect width='24' height='24' stroke='none' fill='#000000' opacity='0'/><g transform="matrix(1.43 0 0 1.43 12 12)" ><path style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-dashoffset: 0; stroke-linejoin: miter; stroke-miterlimit: 4; fill: rgb(255,255,255); fill-rule: nonzero; opacity: 1;" transform=" translate(-8, -7.5)" d="M 2.5 1 C 1.675781 1 1 1.675781 1 2.5 L 1 10.5 C 1 11.324219 1.675781 12 2.5 12 L 4 12 L 4 12.5 C 4 13.324219 4.675781 14 5.5 14 L 13.5 14 C 14.324219 14 15 13.324219 15 12.5 L 15 4.5 C 15 3.675781 14.324219 3 13.5 3 L 12 3 L 12 2.5 C 12 1.675781 11.324219 1 10.5 1 Z M 2.5 2 L 10.5 2 C 10.78125 2 11 2.21875 11 2.5 L 11 10.5 C 11 10.78125 10.78125 11 10.5 11 L 2.5 11 C 2.21875 11 2 10.78125 2 10.5 L 2 2.5 C 2 2.21875 2.21875 2 2.5 2 Z M 12 4 L 13.5 4 C 13.78125 4 14 4.21875 14 4.5 L 14 12.5 C 14 12.78125 13.78125 13 13.5 13 L 5.5 13 C 5.21875 13 5 12.78125 5 12.5 L 5 12 L 10.5 12 C 11.324219 12 12 11.324219 12 10.5 Z" stroke-linecap="round" /></g></svg>`;
 
-      modal.innerHTML = `
-    <div class="modal-content-source-viewer">
-      <span class="modal-close">&times;</span>
-      <p>Reconstructed ${filePaths.length} sources from <a target="_blank" href="${safeUrl}" rel="noopener noreferrer">${safeFilename}</a>:</p>
-      <div class="source-viewer">
-        <div class="file-browser">${fileTreeHTML}</div>
-        <div class="code-viewer">
-          <div class="code-header">
-            <span id="code-filename">Select a file</span>
-            <div class="button-group">
-              <button id="copy-code-button" class="btn btn--copy" title="Copy code" disabled>${copyButtonSVG}</button>
-              <button id="download-all-button" class="btn btn--primary" disabled>Download All (JSON)</button>
-              <button id="download-file-button" class="btn btn--primary" disabled>Download</button>
-            </div>
-          </div>
-          <pre><code id="code-content"></code></pre>
-        </div>
-      </div>
-    </div>
-  `;
+      const modal = createElement("div");
+      modal.id = "context-modal";
+
+      const modalContent = createElement("div", "modal-content-source-viewer");
+      const closeButton = createElement("span", "modal-close");
+      closeButton.innerHTML = "&times;";
+      const description = createElement("p");
+      description.appendChild(createText(`Reconstructed ${filePaths.length} sources from `));
+
+      const safeUrl = sanitizeUrl(sourceMapUrl);
+      if (safeUrl) {
+        const link = createSecureLink(safeUrl, sourceMapUrl.split('/').pop() || "source map");
+        if (link) {
+          description.appendChild(link);
+        } else {
+          description.appendChild(createText(sourceMapUrl.split('/').pop() || "source map"));
+        }
+      } else {
+        description.appendChild(createText(sourceMapUrl.split('/').pop() || "source map"));
+      }
+      description.appendChild(createText(":"));
+
+      const sourceViewer = createElement("div", "source-viewer");
+
+      const fileBrowser = createElement("div", "file-browser");
+      fileBrowser.innerHTML = fileTreeHTML;
+
+      const codeViewer = createElement("div", "code-viewer");
+
+      const codeHeader = createElement("div", "code-header");
+
+      const codeFilename = createElement("span");
+      codeFilename.id = "code-filename";
+      codeFilename.textContent = "Select a file";
+
+      const buttonGroup = createElement("div", "button-group");
+
+      const copyButton = createElement("button", "btn btn--copy");
+      copyButton.id = "copy-code-button";
+      copyButton.title = "Copy code";
+      copyButton.disabled = true;
+      copyButton.innerHTML = copyButtonSVG;
+
+      const downloadAllButton = createElement("button", "btn btn--primary", "Download All (JSON)");
+      downloadAllButton.id = "download-all-button";
+      downloadAllButton.disabled = true;
+
+      const downloadFileButton = createElement("button", "btn btn--primary", "Download");
+      downloadFileButton.id = "download-file-button";
+      downloadFileButton.disabled = true;
+
+      buttonGroup.appendChild(copyButton);
+      buttonGroup.appendChild(downloadAllButton);
+      buttonGroup.appendChild(downloadFileButton);
+
+      codeHeader.appendChild(codeFilename);
+      codeHeader.appendChild(buttonGroup);
+
+      const pre = createElement("pre");
+      const code = createElement("code");
+      code.id = "code-content";
+      pre.appendChild(code);
+
+      codeViewer.appendChild(codeHeader);
+      codeViewer.appendChild(pre);
+
+      sourceViewer.appendChild(fileBrowser);
+      sourceViewer.appendChild(codeViewer);
+
+      modalContent.appendChild(closeButton);
+      modalContent.appendChild(description);
+      modalContent.appendChild(sourceViewer);
+
+      modal.appendChild(modalContent);
 
       shadowRoot.appendChild(modal);
 
-      const modalContent = modal.querySelector(".modal-content-source-viewer");
-      const codeContentEl = modalContent.querySelector('#code-content');
-      const codeFilenameEl = modalContent.querySelector('#code-filename');
-      const copyButton = modalContent.querySelector('#copy-code-button');
-      const downloadButton = modalContent.querySelector('#download-file-button');
-      const downloadAllButton = modalContent.querySelector('#download-all-button');
+      const codeContentEl = code;
+      const codeFilenameEl = codeFilename;
+
       const hasValidSources = Object.keys(sources).filter(key => key !== "jsrecon.buddy.error.log").length > 0;
       downloadAllButton.disabled = !hasValidSources;
 
@@ -893,11 +938,12 @@
           const fileContent = sources[fileName] || '';
 
           codeFilenameEl.textContent = fileName;
+
           codeContentEl.textContent = fileContent;
 
           const hasContent = fileContent.length > 0;
           copyButton.disabled = !hasContent;
-          downloadButton.disabled = !(hasContent && hasValidSources);
+          downloadFileButton.disabled = !(hasContent && hasValidSources);
         });
       });
 
@@ -915,9 +961,10 @@
         });
       });
 
-      downloadButton.addEventListener('click', () => {
+      downloadFileButton.addEventListener('click', () => {
         const fileName = codeFilenameEl.textContent;
         const content = codeContentEl.textContent;
+
         if (!fileName || fileName === 'Select a file' || !content) return;
 
         const blob = new Blob([content], { type: 'text/plain' });
@@ -967,9 +1014,20 @@
         URL.revokeObjectURL(url);
       });
 
-      modalContent.querySelector('.modal-close').onclick = () => shadowRoot.getElementById('context-modal').remove();
+      closeButton.onclick = () => {
+        const modalToRemove = shadowRoot.getElementById('context-modal');
+        if (modalToRemove) {
+          modalToRemove.remove();
+        }
+      };
+
       modal.onclick = (e) => {
-        if (e.target === modal) shadowRoot.getElementById('context-modal').remove();;
+        if (e.target === modal) {
+          const modalToRemove = shadowRoot.getElementById('context-modal');
+          if (modalToRemove) {
+            modalToRemove.remove();
+          }
+        }
       };
     }
 

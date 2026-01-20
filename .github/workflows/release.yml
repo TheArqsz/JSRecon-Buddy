@@ -88,6 +88,7 @@ jobs:
             For more information, please visit the [GitHub repository](https://github.com/${{ github.repository }}/releases/tag/${{ steps.changelog.outputs.tag }}).
 
       - name: Publish to Chrome Web Store
+        if: ${{ steps.changelog.outputs.skipped == 'false' }}
         uses: mobilefirstllc/cws-publish@latest
         with:
           action: 'publish'

@@ -15,6 +15,9 @@
   "host_permissions": [
     "<all_urls>"
   ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';"
+  },
   "options_page": "src/options/options.html",
   "action": {
     "default_title": "JS Recon Buddy",

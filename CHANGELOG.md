@@ -1,3 +1,11 @@
+## [1.20.2](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.20.1...v1.20.2) (2026-01-20)
+
+
+### Bug Fixes
+
+* **performance:** enforce max matches limit with break ([59872ae](https://github.com/TheArqsz/JSRecon-Buddy/commit/59872ae7193d72a270a8e5b694514ced3004df49))
+* **security:** add explicit Content-Security-Policy to manifest ([bbaa0fb](https://github.com/TheArqsz/JSRecon-Buddy/commit/bbaa0fb07b1a3006a17adce1ab4d0d7a9477081d))
+
 ## [1.20.1](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.20.0...v1.20.1) (2026-01-19)
 
 

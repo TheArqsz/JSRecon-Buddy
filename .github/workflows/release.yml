@@ -86,3 +86,13 @@ jobs:
           approval-notes: |
             Automated submission from GitHub Actions for version ${{ steps.changelog.outputs.tag }}.
             For more information, please visit the [GitHub repository](https://github.com/${{ github.repository }}/releases/tag/${{ steps.changelog.outputs.tag }}).
+
+      - name: Publish to Chrome Web Store
+        uses: mobilefirstllc/cws-publish@latest
+        with:
+          action: 'publish'
+          client_id: ${{ secrets.WEBSTORE_CLIENT }}
+          client_secret: ${{ secrets.WEBSTORE_SECRET }}
+          refresh_token: ${{ secrets.WEBSTORE_TOKEN }}
+          extension_id: ${{ secrets.WEBSTORE_EXTENSION_ID }}
+          zip_file: 'js-recon-buddy.zip'

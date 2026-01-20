@@ -43,7 +43,8 @@ export async function performScan(allContentSources, secretRules) {
         const matches = matchAllWithTimeout(rule.regex, content);
         for (const match of matches) {
           if (matchCount++ > MAX_MATCHES_PER_RULE) {
-            console.warn(`[JS Recon Buddy] Rule ${rule.id} exceeds max matches for ${source} - skipping remaining`)
+            console.warn(`[JS Recon Buddy] Rule ${rule.id} exceeds max matches for ${source} - skipping remaining`);
+            break;
           }
 
           const secret = match[rule.group || 0];

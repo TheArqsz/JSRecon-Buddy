@@ -102,9 +102,19 @@ export function isUrlExcluded(url, excludedList) {
     try {
       if (pattern.startsWith('/') && pattern.endsWith('/')) {
         const regex = new RegExp(pattern.slice(1, -1));
-        if (regex.test(url)) return true;
+        try {
+          const matches = matchAllWithTimeout(regex, url, 100);
+          if (matches && matches.length > 0) {
+            return true;
+          }
+        } catch (timeoutError) {
+          console.warn(`[JS Recon Buddy] Regex timeout for pattern: ${pattern}`);
+          continue;
+        }
       } else {
-        if (url.includes(pattern)) return true;
+        if (url.toLowerCase().includes(pattern.toLowerCase())) {
+          return true;
+        }
       }
     } catch (e) {
       console.warn(`[JS Recon Buddy] Invalid Regex in exclusion list: ${pattern}`);

@@ -22,6 +22,9 @@
     <a href="https://github.com/TheArqsz/JSRecon-Buddy/actions/workflows/ci.yml">
         <img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/TheArqsz/JSRecon-Buddy/ci.yml?style=for-the-badge&label=Tests">
     </a>
+    <a href="https://scorecard.dev/viewer/?uri=github.com/TheArqsz/JSRecon-Buddy">
+        <img alt="OpenSSF Scorecard" src="https://img.shields.io/ossf-scorecard/github.com/TheArqsz/JSRecon-Buddy?label=openssf+scorecard&style=for-the-badge">
+    </a>
 </p>
 
 

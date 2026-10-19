@@ -1,3 +1,10 @@
+## [1.20.3](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.20.2...v1.20.3) (2026-10-19)
+
+
+### Bug Fixes
+
+* **release:** publish validated releases from successfully tested source ([1a9757f](https://github.com/TheArqsz/JSRecon-Buddy/commit/1a9757fbce95ef568d861b5b54379e6215b1380e))
+
 ## [1.20.2](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.20.1...v1.20.2) (2026-01-20)
 
 

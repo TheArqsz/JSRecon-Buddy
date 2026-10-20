@@ -1,3 +1,10 @@
+## [1.20.6](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.20.5...v1.20.6) (2026-10-20)
+
+
+### Bug Fixes
+
+* **core:** prevent regex matcher from repeating matches ([23681f8](https://github.com/TheArqsz/JSRecon-Buddy/commit/23681f8ac449939a10e57fc6a20ffa316a45c800))
+
 ## [1.20.5](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.20.4...v1.20.5) (2026-10-20)
 
 

@@ -217,6 +217,15 @@ export function matchAllWithTimeout(regex, content, timeoutMs = 500) {
       console.warn(`[JS Recon Buddy] Regex timeout exceeded for pattern: ${regex.source}`);
       return matches;
     }
+
+    if (!regex.global && !regex.sticky) {
+      break;
+    }
+
+    if (match[0].length === 0) {
+      const nextIndex = match.index + (regex.unicode && content.codePointAt(match.index) > 0xFFFF ? 2 : 1);
+      regex.lastIndex = nextIndex;
+    }
   }
   return matches;
 }

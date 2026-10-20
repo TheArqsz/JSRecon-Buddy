@@ -1,3 +1,10 @@
+## [1.20.5](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.20.4...v1.20.5) (2026-10-20)
+
+
+### Bug Fixes
+
+* **release:** sign and verify downloadable extension archives ([dca5beb](https://github.com/TheArqsz/JSRecon-Buddy/commit/dca5beb1d690d3f7b52005a249ad5f07497181db))
+
 ## [1.20.4](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.20.3...v1.20.4) (2026-10-20)
 
 

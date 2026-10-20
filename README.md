@@ -41,6 +41,7 @@ A simple browser extension to quickly find interesting security-related informat
 - [How to Install or Update?](#how-to-install-or-update)
   - [Chromium-based browser](#chromium-based-browser)
   - [Firefox](#firefox)
+- [Verify a downloaded release](#verify-a-downloaded-release)
 - [How to use?](#how-to-use)
   - [Master On/Off Toggle](#master-onoff-toggle)
   - [Main usage (on-demand scan)](#main-usage-on-demand-scan)
@@ -208,6 +209,39 @@ The extension will now be installed or updated.
 You can follow a similar path for the Chromium-based browser. The debug URL is [`about:debugging#/runtime/this-firefox`](about:debugging#/runtime/this-firefox). Fortunately, the Mozilla Add-on Store has fewer restrictions than the Chrome Web Store.
 
 You can find my extension [here in the official Add-on Store](https://addons.mozilla.org/en-US/firefox/addon/js-recon-buddy/). Just click *Add to Firefox* and have fun.
+
+## Verify a downloaded release
+
+New releases include a digital signature so you can check that the ZIP has
+not been modified since our GitHub Actions release workflow signed it.
+
+Verification is optional, but recommended when installing the extension
+manually. It requires [Cosign](https://docs.sigstore.dev/cosign/system_config/installation/).
+
+### Download and verify
+
+1. Open the [release you want to install](https://github.com/TheArqsz/JSRecon-Buddy/releases).
+2. Download both files from **Assets** of that same release:
+   - `js-recon-buddy.zip`
+   - `js-recon-buddy.zip.sigstore.json`
+3. Place them in the same directory and run:
+
+```bash
+cosign verify-blob js-recon-buddy.zip \
+  --bundle js-recon-buddy.zip.sigstore.json \
+  --certificate-identity \
+    'https://github.com/TheArqsz/JSRecon-Buddy/.github/workflows/ci.yml@refs/heads/main' \
+  --certificate-oidc-issuer \
+    'https://token.actions.githubusercontent.com'
+```
+
+Successful verification reports `Verified OK` and exits successfully.
+You can then extract the ZIP and follow the manual installation instructions.
+
+If verification fails, **do not install that download**. Confirm that both
+files came from the same release and download them again. If the failure
+persists, report it through the project's
+[security reporting channel](SECURITY.md).
 
 ## How to use?
 

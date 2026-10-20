@@ -1,3 +1,10 @@
+## [1.20.4](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.20.3...v1.20.4) (2026-10-20)
+
+
+### Bug Fixes
+
+* safely preserve source map entries ([906a812](https://github.com/TheArqsz/JSRecon-Buddy/commit/906a812b04daad3057cfb7f2dadc702d92c40e4c))
+
 ## [1.20.3](https://github.com/TheArqsz/JSRecon-Buddy/compare/v1.20.2...v1.20.3) (2026-10-19)
 
 

@@ -9,7 +9,8 @@ import {
   isScanningGloballyEnabled,
   isPassiveScanningEnabled,
   escapeHTML,
-  createLRUCache
+  createLRUCache,
+  matchAllWithTimeout
 } from '../../src/utils/coreUtils.js';
 
 global.chrome = {
@@ -134,6 +135,25 @@ describe('isUrlExcluded', () => {
   test('should not throw an error for an invalid regex and should continue checking', () => {
     const list = '/[invalid-regex/\nexample.com';
     expect(isUrlExcluded('https://sub.example.com', list)).toBe(true);
+  });
+});
+
+describe('matchAllWithTimeout', () => {
+  test('returns a single match for a non-global expression', () => {
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => { });
+    warnSpy.mockClear();
+
+    const matches = matchAllWithTimeout(/foo/, 'foo foo');
+
+    expect(matches).toHaveLength(1);
+    expect(warnSpy).not.toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
+
+  test('advances after zero-width global matches', () => {
+    const matches = matchAllWithTimeout(/^/gm, 'first\nsecond');
+
+    expect(matches).toHaveLength(2);
   });
 });
 

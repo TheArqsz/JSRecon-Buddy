@@ -45,6 +45,7 @@ jobs:
 
     permissions:
       contents: write
+      id-token: write
 
     concurrency:
       group: release-main
@@ -150,6 +151,46 @@ jobs:
 
           cp "js-recon-buddy-${RELEASE_TAG}.zip" js-recon-buddy.zip
 
+      - name: Install Cosign
+        if: ${{ steps.changelog.outputs.skipped == 'false' }}
+        uses: sigstore/cosign-installer@ba7bc0a3fef59531c69a25acd34668d6d3fe6f22 # v4.1.0
+
+      - name: Sign release archives
+        if: ${{ steps.changelog.outputs.skipped == 'false' }}
+        env:
+          RELEASE_TAG: ${{ steps.changelog.outputs.tag }}
+        run: |
+          set -euo pipefail
+
+          cosign sign-blob --yes \
+            --bundle "js-recon-buddy-${RELEASE_TAG}.zip.sigstore.json" \
+            "js-recon-buddy-${RELEASE_TAG}.zip"
+
+          cosign sign-blob --yes \
+            --bundle js-recon-buddy.zip.sigstore.json \
+            js-recon-buddy.zip
+
+      - name: Verify release signatures
+        if: ${{ steps.changelog.outputs.skipped == 'false' }}
+        env:
+          RELEASE_TAG: ${{ steps.changelog.outputs.tag }}
+          SIGNER_IDENTITY: https://github.com/TheArqsz/JSRecon-Buddy/.github/workflows/ci.yml@refs/heads/main
+          OIDC_ISSUER: https://token.actions.githubusercontent.com
+        run: |
+          set -euo pipefail
+
+          cosign verify-blob \
+            --bundle "js-recon-buddy-${RELEASE_TAG}.zip.sigstore.json" \
+            --certificate-identity "$SIGNER_IDENTITY" \
+            --certificate-oidc-issuer "$OIDC_ISSUER" \
+            "js-recon-buddy-${RELEASE_TAG}.zip"
+
+          cosign verify-blob \
+            --bundle js-recon-buddy.zip.sigstore.json \
+            --certificate-identity "$SIGNER_IDENTITY" \
+            --certificate-oidc-issuer "$OIDC_ISSUER" \
+            js-recon-buddy.zip
+
       - name: Push release commit and tag atomically
         if: ${{ steps.changelog.outputs.skipped == 'false' }}
         env:
@@ -172,6 +213,8 @@ jobs:
           files: |
             js-recon-buddy-${{ steps.changelog.outputs.tag }}.zip
             js-recon-buddy.zip
+            js-recon-buddy-${{ steps.changelog.outputs.tag }}.zip.sigstore.json
+            js-recon-buddy.zip.sigstore.json
           fail_on_unmatched_files: true
           draft: false
           tag_name: ${{ steps.changelog.outputs.tag }}

@@ -28,11 +28,19 @@ export async function reconstructSource(sourceMapUrl) {
     }
 
     const reconstructedSources = {};
+    const setSource = (sourceFile, content) => {
+      Object.defineProperty(reconstructedSources, sourceFile, {
+        value: content,
+        writable: true,
+        enumerable: true,
+        configurable: true
+      });
+    };
 
     for (const [index, sourceFile] of sourceMapData.sources.entries()) {
       const embeddedContent = sourceMapData.sourcesContent?.[index];
-      if (embeddedContent) {
-        reconstructedSources[sourceFile] = embeddedContent;
+      if (embeddedContent !== undefined && embeddedContent !== null) {
+        setSource(sourceFile, embeddedContent);
         continue;
       }
 
@@ -41,11 +49,11 @@ export async function reconstructSource(sourceMapUrl) {
         const sourceResponse = await fetch(sourceUrl);
 
         if (!sourceResponse.ok) {
-          reconstructedSources[sourceFile] = `[JS Recon Buddy] Skipping missing source file: ${sourceUrl} (Status: ${sourceResponse.status})`
+          setSource(sourceFile, `[JS Recon Buddy] Skipping missing source file: ${sourceUrl} (Status: ${sourceResponse.status})`);
           continue;
         }
 
-        reconstructedSources[sourceFile] = await sourceResponse.text();
+        setSource(sourceFile, await sourceResponse.text());
       } catch (fetchError) {
         console.warn(`[JS Recon Buddy] Skipping source file due to network error: ${fetchError.message}`);
         continue;

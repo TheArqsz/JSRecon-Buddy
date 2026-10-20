@@ -1,4 +1,5 @@
 import { describe, test, expect, beforeEach, jest } from '@jest/globals';
+import fc from 'fast-check';
 
 global.fetch = jest.fn();
 
@@ -23,6 +24,90 @@ describe('reconstructSource', () => {
     expect(result['webpack:///src/index.js']).toBe('console.log("hello");');
     expect(result['webpack:///src/utils.js']).toBe('export const util = () => {};');
     expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  test('should preserve empty embedded content without fetching the source', async () => {
+    browser.runtime.sendMessage.mockResolvedValue({
+      sources: ['webpack:///src/empty.js'],
+      sourcesContent: ['']
+    });
+
+    const result = await reconstructSource('https://localhost/bundle.js.map');
+
+    expect(result['webpack:///src/empty.js']).toBe('');
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  test('should preserve unusual filenames as own properties', async () => {
+    browser.runtime.sendMessage.mockResolvedValue({
+      sources: ['__proto__'],
+      sourcesContent: ['embedded content']
+    });
+
+    const result = await reconstructSource('https://localhost/bundle.js.map');
+
+    expect(Object.hasOwn(result, '__proto__')).toBe(true);
+    expect(result['__proto__']).toBe('embedded content');
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  test('should keep the last embedded content for duplicate filenames', async () => {
+    // Source entries are processed in order, so later entries overwrite earlier ones.
+    browser.runtime.sendMessage.mockResolvedValue({
+      sources: ['src/shared.js', 'src/shared.js'],
+      sourcesContent: ['first content', 'last content']
+    });
+
+    const result = await reconstructSource('https://localhost/bundle.js.map');
+
+    expect(result['src/shared.js']).toBe('last content');
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  test('should preserve generated embedded filenames and content exactly', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.array(
+          fc.tuple(fc.string({ maxLength: 40 }), fc.string({ maxLength: 80 })),
+          { minLength: 1, maxLength: 12 }
+        ),
+        async entries => {
+          browser.runtime.sendMessage.mockResolvedValue({
+            sources: entries.map(([source]) => source),
+            sourcesContent: entries.map(([, content]) => content)
+          });
+
+          const result = await reconstructSource('https://localhost/bundle.js.map');
+          const expected = Object.fromEntries(entries);
+
+          expect(result).toStrictEqual(expected);
+          expect(global.fetch).not.toHaveBeenCalled();
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  test('should preserve generated unusual filename keys', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.constantFrom('__proto__', 'constructor', 'toString', 'hasOwnProperty'),
+        fc.string({ maxLength: 80 }),
+        async (sourceFile, content) => {
+          browser.runtime.sendMessage.mockResolvedValue({
+            sources: [sourceFile],
+            sourcesContent: [content]
+          });
+
+          const result = await reconstructSource('https://localhost/bundle.js.map');
+
+          expect(Object.hasOwn(result, sourceFile)).toBe(true);
+          expect(result[sourceFile]).toBe(content);
+          expect(global.fetch).not.toHaveBeenCalled();
+        }
+      ),
+      { numRuns: 100 }
+    );
   });
 
   test('should fetch source files when sourcesContent is not available', async () => {

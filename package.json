@@ -6,6 +6,7 @@
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
   "devDependencies": {
+    "fast-check": "4.10.2",
     "jest": "30.5.2",
     "jest-environment-jsdom": "30.5.2",
     "jest-webextension-mock": "4.2.0"

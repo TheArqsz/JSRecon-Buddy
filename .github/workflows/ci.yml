@@ -239,7 +239,7 @@ jobs:
 
       - name: Publish to Chrome Web Store
         if: ${{ steps.changelog.outputs.skipped == 'false' }}
-        uses: mobilefirstllc/cws-publish@024d5b5a69f0dfe85c216198f7aea6f95a3ea18b # latest resolved 2026-10-19
+        uses: mobilefirstllc/cws-publish@569e87bc9a54ad7712ba6dc154a110d88af63b85 # latest resolved 2026-10-19
         with:
           action: 'publish'
           client_id: ${{ secrets.WEBSTORE_CLIENT }}
